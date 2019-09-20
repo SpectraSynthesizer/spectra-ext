@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+<!-- Locate menu dynamically under syntech.ui : syntechaddonsmenu -->   
+ <extension point="org.eclipse.ui.menus">
+  <menuContribution locationURI="popup:tau.smlab.syntech.ui.syntechaddonsmenu">
+	<menu
+       label="Rich Controller Walker">
+    <dynamic 
+              class="tau.smlab.syntech.richcontrollerwalker.ui.action.ControllerWalkerAction"
+              id="tau.smlab.syntech.richcontrollerwalker.ui.action.ControllerWalkerAction">
+    </dynamic>      
+	</menu>
+  </menuContribution>
+ </extension>
+
+<!-- Preferences page. Locate dynamically under syntech.ui : PreferencePage -->
+<extension
+     point="org.eclipse.ui.preferencePages">
+      <page
+      		category="tau.smlab.syntech.ui.preferences.PreferencePage"
+            class="tau.smlab.syntech.richcontrollerwalker.ui.preferences.PreferencePage"
+            id="tau.smlab.syntech.richcontrollerwalker.ui.preferences.PreferencePage"
+            name="Rich Controller Walker">
+      </page>
+</extension>
+<extension
+         point="org.eclipse.core.runtime.preferences">
+      <initializer
+            class="tau.smlab.syntech.richcontrollerwalker.ui.preferences.PreferenceInitializer">
+      </initializer>
+</extension>
+
+</plugin>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.ui.menus">
+      <menuContribution
+            allPopups="false"
+            locationURI="popup:tau.smlab.syntech.ui.syntechaddonsmenu">
+            <menu
+       			label="Cores">
+    		<dynamic 
+              class="tau.smlab.syntech.cores.ui.CoreMenu"
+              id="tau.smlab.syntech.cores.ui.CoreMenu"
+              >
+    		</dynamic>      
+	</menu>
+      </menuContribution>
+   </extension>
+
+</plugin>
+
+

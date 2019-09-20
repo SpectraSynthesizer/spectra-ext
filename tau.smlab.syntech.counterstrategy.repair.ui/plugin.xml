@@ -1,0 +1,19 @@
+<plugin>
+
+<!-- Locate menu dynamically under syntech.ui : syntechaddonsmenu -->   
+ <extension point="org.eclipse.ui.menus">
+  <menuContribution locationURI="popup:tau.smlab.syntech.ui.syntechaddonsmenu">
+	<menu
+       label="GR(1) Repair">
+    <dynamic 
+              class="tau.smlab.syntech.counterstrategy.repair.ui.JVTSBasedRepair"
+              id="tau.smlab.syntech.counterstrategy.reapir.ui.JVTSBasedRepair"
+              >
+    </dynamic>      
+   
+	</menu>
+  </menuContribution>
+ </extension>
+
+
+</plugin>

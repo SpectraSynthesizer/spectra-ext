@@ -1,0 +1,15 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Cores
+Bundle-SymbolicName: tau.smlab.syntech.cores
+Bundle-Version: 1.0.0.qualifier
+Bundle-Activator: tau.smlab.syntech.cores.Activator
+Require-Bundle: org.eclipse.ui,
+ org.eclipse.core.runtime,
+ tau.smlab.syntech.gamemodel;bundle-version="1.0.0",
+ tau.smlab.syntech.games.gr1;bundle-version="1.0.0",
+ tau.smlab.syntech.jtlv
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Automatic-Module-Name: tau.smlab.syntech.cores
+Bundle-ActivationPolicy: lazy
+Export-Package: tau.smlab.syntech.cores

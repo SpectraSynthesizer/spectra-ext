@@ -1,0 +1,30 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: CounterStrategyRepairUI
+Bundle-SymbolicName: tau.smlab.syntech.counterstrategy.repair.ui;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-Activator: tau.smlab.syntech.counterstrategy.repair.ui.Activator
+Require-Bundle: tau.smlab.syntech.ui;bundle-version="1.0.0",
+ org.eclipse.ui;bundle-version="3.109.0",
+ org.eclipse.core.runtime;bundle-version="3.13.0",
+ org.eclipse.core.resources;bundle-version="3.12.0",
+ org.eclipse.jface.text;bundle-version="3.12.0",
+ org.eclipse.ui.ide;bundle-version="3.13.1",
+ tau.smlab.syntech.ui.extension;bundle-version="1.0.0",
+ org.eclipse.ui.console;bundle-version="3.7.1",
+ tau.smlab.syntech.jtlv;bundle-version="1.0.0",
+ tau.smlab.syntech.repair
+Bundle-ActivationPolicy: lazy
+Import-Package: net.sf.javabdd,
+ tau.smlab.syntech.bddgenerator,
+ tau.smlab.syntech.checks,
+ tau.smlab.syntech.counterstrategy.model,
+ tau.smlab.syntech.counterstrategy.repair,
+ tau.smlab.syntech.gameinput.model,
+ tau.smlab.syntech.gameinputtrans,
+ tau.smlab.syntech.gamemodel,
+ tau.smlab.syntech.games.rabin,
+ tau.smlab.syntech.spectragameinput
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+
+

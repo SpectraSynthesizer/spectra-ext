@@ -1,0 +1,18 @@
+<plugin>
+
+<!-- Locate menu dynamically under syntech.ui : syntechaddonsmenu -->   
+ <extension point="org.eclipse.ui.menus">
+  <menuContribution locationURI="popup:tau.smlab.syntech.ui.syntechaddonsmenu">
+	<menu
+       label="GR(1) Vacuity">
+    <dynamic 
+              class="tau.smlab.syntech.vacuity.ui.VacuityMenu"
+              id="tau.smlab.syntech.vacuity.ui.Vacuity"
+              >
+    </dynamic>      
+   
+	</menu>
+  </menuContribution>
+ </extension>
+
+</plugin>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.ui.menus">
+      <menuContribution
+            allPopups="false"
+            locationURI="popup:tau.smlab.syntech.ui.syntechaddonsmenu">
+            <menu
+       			label="Well-Separation">
+    		<dynamic 
+              class="tau.smlab.syntech.games.gr1.wellseparation.ui.WellSeparationMenu"
+              id="tau.smlab.syntech.games.gr1.wellseparation.ui.WellSeparationMenu"
+              >
+    		</dynamic>      
+	</menu>
+      </menuContribution>
+   </extension>
+   
+   <!-- Preferences page. Locate dynamically under syntech.ui : PreferencePage -->
+	<extension point="org.eclipse.ui.preferencePages">
+      <page
+      		category="tau.smlab.syntech.ui.preferences.PreferencePage"
+            class="tau.smlab.syntech.games.gr1.wellseparation.ui.preferences.PreferencePage"
+            id="tau.smlab.syntech.games.gr1.wellseparation.ui.preferences.PreferencePage"
+            name="Well-Separation">
+      </page>
+	</extension>
+
+</plugin>
+
+
