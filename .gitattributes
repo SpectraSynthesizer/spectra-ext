@@ -27,4 +27,4 @@
 *.so            binary
 *.war           binary
 
-tau.smlab.syntech.richcontrollerwalker.ui/doc linguist-vendored
+tau.smlab.syntech.richcontrollerwalker.ui/doc/* linguist-vendored
