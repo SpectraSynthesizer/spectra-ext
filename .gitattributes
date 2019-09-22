@@ -28,3 +28,4 @@
 *.war           binary
 
 tau.smlab.syntech.richcontrollerwalker.ui/doc/* linguist-documentation
+tau.smlab.syntech.richcontrollerwalker/doc/* linguist-documentation
