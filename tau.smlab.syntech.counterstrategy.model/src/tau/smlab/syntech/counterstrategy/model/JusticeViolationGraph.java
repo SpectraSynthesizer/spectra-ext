@@ -55,8 +55,6 @@ import net.sf.javabdd.BDDVarSet;
 import tau.smlab.syntech.gamemodel.BehaviorInfo;
 import tau.smlab.syntech.gamemodel.GameModel;
 import tau.smlab.syntech.gamemodel.PlayerModule;
-import tau.smlab.syntech.games.controller.symbolic.SymbolicController;
-import tau.smlab.syntech.games.controller.symbolic.SymbolicControllerChecker;
 import tau.smlab.syntech.games.rabin.RabinGame;
 import tau.smlab.syntech.jtlv.CoreUtil;
 import tau.smlab.syntech.jtlv.Env;
@@ -3499,38 +3497,38 @@ public class JusticeViolationGraph {
 		return res;
 	}
 	
-	public boolean validate() {
-		log.fine("START");
-		BDD graphInit = nodes.get(0).nodeBDD.id();
-		BDD graphTrans = Env.FALSE();
-		Iterator<Map.Entry<Integer, JVGNode>> nodesItr = nodes.entrySet().iterator();
-		while (nodesItr.hasNext()) {
-			Map.Entry<Integer, JVGNode> elem = (Map.Entry<Integer, JVGNode>) nodesItr.next();
-			if (elem.getKey() == 0) {
-				continue;
-			}
-			graphTrans = graphTrans.or(elem.getValue().transitions);
-		}
-		
-		SymbolicController sym = new SymbolicController();
-		sym.setInit(graphInit.id());
-		sym.setTrans(graphTrans.id());
-		GameModel m = new GameModel();
-		m.setEnv(this.env);
-		m.setSys(this.sys);
-		if (!SymbolicControllerChecker.checkCompletenessForSys(sym, m)) {
-			throw new RuntimeException();
-		}
-
-		boolean res = SymbolicControllerChecker.checkRabinSpec(sym, m);
-		sym.free();
-
-		graphInit.free();
-		graphTrans.free();
-
-		log.fine("END");
-		return res;
-	}
+//	public boolean validate() {
+//		log.fine("START");
+//		BDD graphInit = nodes.get(0).nodeBDD.id();
+//		BDD graphTrans = Env.FALSE();
+//		Iterator<Map.Entry<Integer, JVGNode>> nodesItr = nodes.entrySet().iterator();
+//		while (nodesItr.hasNext()) {
+//			Map.Entry<Integer, JVGNode> elem = (Map.Entry<Integer, JVGNode>) nodesItr.next();
+//			if (elem.getKey() == 0) {
+//				continue;
+//			}
+//			graphTrans = graphTrans.or(elem.getValue().transitions);
+//		}
+//		
+//		SymbolicController sym = new SymbolicController();
+//		sym.setInit(graphInit.id());
+//		sym.setTrans(graphTrans.id());
+//		GameModel m = new GameModel();
+//		m.setEnv(this.env);
+//		m.setSys(this.sys);
+//		if (!SymbolicControllerChecker.checkCompletenessForSys(sym, m)) {
+//			throw new RuntimeException();
+//		}
+//
+//		boolean res = SymbolicControllerChecker.checkRabinSpec(sym, m);
+//		sym.free();
+//
+//		graphInit.free();
+//		graphTrans.free();
+//
+//		log.fine("END");
+//		return res;
+//	}
 
 	// helper method - for debugging
 	@SuppressWarnings("unused")

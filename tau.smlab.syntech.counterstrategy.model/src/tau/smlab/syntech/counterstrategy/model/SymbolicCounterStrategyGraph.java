@@ -712,10 +712,10 @@ public class SymbolicCounterStrategyGraph {
 		log.info("END");
 	}
 	
-	public boolean validate() {
-		log.info("START");
-		boolean res = jvg.validate();
-		log.info("END - res = " + res);
-		return res;
-	}
+//	public boolean validate() {
+//		log.info("START");
+//		boolean res = jvg.validate();
+//		log.info("END - res = " + res);
+//		return res;
+//	}
 }
