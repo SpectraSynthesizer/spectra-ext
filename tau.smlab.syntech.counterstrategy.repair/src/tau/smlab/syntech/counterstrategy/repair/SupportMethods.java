@@ -41,12 +41,15 @@ import tau.smlab.syntech.gamemodel.GameModel;
 import tau.smlab.syntech.gamemodel.PlayerModule;
 import tau.smlab.syntech.gamemodel.util.GameBuilderUtil;
 import tau.smlab.syntech.games.gr1.GR1Game;
-import tau.smlab.syntech.games.gr1.GR1GameMemoryless;
+import tau.smlab.syntech.games.gr1.GR1GameExperiments;
+import tau.smlab.syntech.games.gr1.GR1GameImplC;
 import tau.smlab.syntech.games.gr1.unreal.DdminUnrealizableCore;
+import tau.smlab.syntech.jtlv.BDDPackage;
 import tau.smlab.syntech.jtlv.Env;
 import tau.smlab.syntech.jtlv.env.module.ModuleBDDField;
 import tau.smlab.syntech.jtlv.lib.FixPoint;
 import tau.smlab.syntech.repair.BasicAssumption;
+import tau.smlab.syntech.ui.preferences.PreferencePage;
 
 /**
  * Support methods for repair classed
@@ -105,10 +108,18 @@ public class SupportMethods  {
    * @return
    */
   public static boolean isRealizable(GameModel m) {
-	  GR1Game rg = new GR1GameMemoryless(m);
-	  boolean isRealizable = rg.checkRealizability();
-	  rg.free();
-	  return isRealizable;
+	  boolean useMemory = GR1GameExperiments.WITH_MEMORY;
+	  GR1GameExperiments.WITH_MEMORY = false; // no need for memory in these menu options because we only check for realizability
+	  GR1Game gr1;		  
+	  if (PreferencePage.getBDDPackageSelection().equals(BDDPackage.CUDD)) {
+		  gr1 = new GR1GameImplC(m);
+	  } else {
+		  gr1 = new GR1GameExperiments(m);
+	  }
+	  boolean realizable = gr1.checkRealizability();
+	  gr1.free();
+	  GR1GameExperiments.WITH_MEMORY = useMemory;
+	  return realizable;
   }
 
   public static void computeAndSetGurCore(GameModel model) {

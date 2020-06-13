@@ -31,6 +31,7 @@ package tau.smlab.syntech.cores.ui;
 import static tau.smlab.syntech.cores.ui.Activator.PLUGIN_NAME;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.core.resources.IFile;
@@ -43,14 +44,16 @@ import org.eclipse.ui.PlatformUI;
 
 import tau.smlab.syntech.bddgenerator.BDDGenerator;
 import tau.smlab.syntech.bddgenerator.BDDGenerator.TraceInfo;
-import tau.smlab.syntech.checks.DdminRealizableCore;
 import tau.smlab.syntech.gameinput.model.GameInput;
 import tau.smlab.syntech.gameinputtrans.TranslationProvider;
 import tau.smlab.syntech.gamemodel.BehaviorInfo;
 import tau.smlab.syntech.gamemodel.GameModel;
-import tau.smlab.syntech.games.gr1.GR1Game;
-import tau.smlab.syntech.games.gr1.unreal.DdminUnrealizableCore;
+import tau.smlab.syntech.gamemodel.util.EnvTraceInfoBuilder;
+import tau.smlab.syntech.gamemodel.util.SysTraceInfoBuilder;
+import tau.smlab.syntech.gamemodel.util.TraceIdentifier;
+import tau.smlab.syntech.games.gr1.GR1GameExperiments;
 import tau.smlab.syntech.games.gr1.unreal.DdminUnrealizableVarsCore;
+import tau.smlab.syntech.games.util.AbstractDdmin;
 import tau.smlab.syntech.jtlv.BDDPackage;
 import tau.smlab.syntech.jtlv.Env;
 import tau.smlab.syntech.jtlv.env.module.ModuleBDDField;
@@ -60,25 +63,28 @@ import tau.smlab.syntech.spectragameinput.SpectraInputProvider;
 import tau.smlab.syntech.spectragameinput.translator.Tracer;
 import tau.smlab.syntech.ui.extension.SyntechAction;
 import tau.smlab.syntech.ui.jobs.MarkerKind;
-//import tau.smlab.syntech.ui.jobs.MarkerKind;
 import tau.smlab.syntech.ui.preferences.PreferencePage;
-import tau.smlab.syntech.cores.GlobalCoreUtility;
+import tau.smlab.syntech.cores.AllUnrealizebleCores;
+import tau.smlab.syntech.cores.QuickCore;
+import tau.smlab.syntech.cores.util.Checker;
+import tau.smlab.syntech.cores.util.RealizabilityCheck;
+import tau.smlab.syntech.cores.util.RealizabilityCheck.GameType;
 
 import org.eclipse.xtext.nodemodel.INode;
 import org.eclipse.xtext.nodemodel.util.NodeModelUtils;
 
 
-
-
 /**
  *  
- * @author Shalom
+ * @author shalom
  *
  */
 
 public class CoreMenu extends SyntechAction<CoresActionID> {
 
 	private static List<Integer> traceIDListInCore = new ArrayList<Integer>();
+	private static TraceIdentifier ti = null; 
+
 	protected static IFile previousFileWithMarkers = null;
 
 	@Override
@@ -112,26 +118,43 @@ public class CoreMenu extends SyntechAction<CoresActionID> {
 			//Spectra translate exception
 			e2.printStackTrace();
 		}
-		GameModel gm = BDDGenerator.generateGameModel(gi, TraceInfo.ALL);
 		
-		GR1Game game = new GR1Game(gm);
-		boolean realizable = game.checkRealizability();
+		GameModel gm = BDDGenerator.generateGameModel(gi, TraceInfo.ALL, false, PreferencePage.getTransFuncSelection(true));
+		ti = new TraceIdentifier(gm);
 		
-		GlobalCoreUtility glb = null;
+		boolean prevUseMemory = GR1GameExperiments.WITH_MEMORY;
+		GR1GameExperiments.WITH_MEMORY = false; // no need for memory in these menu options because we only check for realizability
+		
 		console.activate();
 		clearMarkers();
+		
+		PreferencePage.setOptSelection();
+		boolean realizable = RealizabilityCheck.isRealizable(gm);
+
+		boolean quickCore = tau.smlab.syntech.cores.ui.preferences.PreferencePage.getUseQuickCore();
+		RealizabilityCheck.checkType = 
+				(tau.smlab.syntech.cores.ui.preferences.PreferencePage.useGR1Realizability()) ?
+						GameType.GR1_GAME : GameType.RABIN_GAME;
+		RealizabilityCheck.useCUDD = PreferencePage.getBDDPackageSelection().equals(BDDPackage.CUDD);
+		
+		final SysTraceInfoBuilder builder = new SysTraceInfoBuilder(gm);
+
 		switch (actionID) {
 			case SYS_VAR_CORE:
 				if (realizable) {
 					consolePrinter.println("Specification is realizable. Cannot compute system variables core.");
 				} else {
-					DdminUnrealizableCore coreMinimizer = new DdminUnrealizableCore(gm);
-					List<BehaviorInfo> coreGars = new ArrayList<BehaviorInfo>(coreMinimizer.minimize(gm.getSysBehaviorInfo()));
-					consolePrinter.println("Found guarantees unrealizable core with " + coreGars.size() + " guarantees.");
+					List<Integer> coreGars = computeGarCore(gm, builder, quickCore);
+					consolePrinter.println("Found guarantees unrealizable core with " + coreGars.size() + " guarantees, at lines " + TraceIdentifier.formatLines(coreGars) + ". See markers in specification file.");
 					writeSpecElements(coreGars, MarkerKind.UNREAL_CORE, true);
 					consolePrinter.println("");
 					
-					DdminUnrealizableVarsCore varsMinimizer = new DdminUnrealizableVarsCore(gm, coreGars);
+					DdminUnrealizableVarsCore varsMinimizer = new DdminUnrealizableVarsCore(builder.build(coreGars)) {
+						@Override 
+						public boolean realizable(GameModel gm) {
+							return RealizabilityCheck.isRealizable(gm);
+						}
+					};
 					List<ModuleBDDField> coreVars = varsMinimizer.minimize(gm.getSys().getNonAuxFields());
 		  	  		if (!coreVars.isEmpty()) {
 		  	  			consolePrinter.println("Found " + coreVars.size() + " unrealizable core system variables.");
@@ -146,10 +169,16 @@ public class CoreMenu extends SyntechAction<CoresActionID> {
 				if (!realizable) {
 					consolePrinter.println("Specification is not realizable. Cannot compute assumptions core.");
 				} else {
-					DdminRealizableCore asmMinimizer = new DdminRealizableCore(gm);
-					List<BehaviorInfo> asmCore = asmMinimizer.minimize(new ArrayList<BehaviorInfo>(gm.getEnvBehaviorInfo()));
+					final EnvTraceInfoBuilder ebuilder = new EnvTraceInfoBuilder(gm);
+					AbstractDdmin<Integer> asmMinimizer = new AbstractDdmin<Integer>() {
+						@Override 
+						public boolean check(List<Integer> part) {
+							return RealizabilityCheck.isRealizable(ebuilder.build(part));
+						}						
+					};
+					List<Integer> asmCore = asmMinimizer.minimize(ebuilder.getTraceList());
 					if (!asmCore.isEmpty()) {
-		  	  			consolePrinter.println("Found " + asmCore.size() + " realizable core assumptions.");
+		  	  			consolePrinter.println("Found " + asmCore.size() + " realizable core assumptions, at lines " +  TraceIdentifier.formatLines(asmCore) + ". See markers in specification file.");
 						writeSpecElements(asmCore, MarkerKind.CUSTOM_TEXT_MARKER, true);
 					} else {
 		  	  			consolePrinter.println("There is no need for any assumptions to make the specification realizable.");
@@ -161,29 +190,24 @@ public class CoreMenu extends SyntechAction<CoresActionID> {
 				if (realizable) {
 					consolePrinter.println("Specification is realizable. Cannot compute guarantees core.");
 				} else {
-					glb = new GlobalCoreUtility(gm);
-					List<BehaviorInfo> globalCore = glb.getGlobalCore();
+					AllUnrealizebleCores glb = new AllUnrealizebleCores(gm, quickCore);
+
+					glb.computeAllCores(builder.getTraceList());
+					List<Integer> globalCore = glb.getCoreData().getGlobalCore();
+					consolePrinter.println(
+							"Found a global unrealizable core with " + globalCore.size() + " elements, at lines "  + TraceIdentifier.formatLines(globalCore) + ". See markers in specification file.");
+
 					writeSpecElements(globalCore, MarkerKind.UNREAL_CORE, true);	
 				}
 				break;
 				
-			case UNREALIZABLE_CORE:
-				clearMarkers();
-	
-				PreferencePage.setOptSelection();
-				if (PreferencePage.getBDDPackageSelection().equals(BDDPackage.CUDD)) {
-					DdminUnrealizableCore.cImpl = true;
+			case UNREALIZABLE_CORE:	
+				if (realizable) {
+					consolePrinter.println("Specification is realizable. Cannot compute guarantees core.");
 				} else {
-					DdminUnrealizableCore.cImpl = false;
-				}
-	
-				DdminUnrealizableCore ucmin = new DdminUnrealizableCore(gm);
-				List<BehaviorInfo> res = new ArrayList<BehaviorInfo>();
-				res = ucmin.minimize(gm.getSysBehaviorInfo());
-	
-				if (!res.isEmpty()) {
+					List<Integer> result = computeGarCore(gm, builder, quickCore);
 					consolePrinter.println(
-							"Found unrealizable core with " + res.size() + " elements. See markers in specification file.");
+							"Found unrealizable core with " + result.size() + " elements, at lines "  + TraceIdentifier.formatLines(result) + ". See markers in specification file.");
 	
 					PlatformUI.getWorkbench().getDisplay().syncExec(new Runnable() {
 						public void run() {
@@ -196,31 +220,55 @@ public class CoreMenu extends SyntechAction<CoresActionID> {
 						}
 					});
 	
-					createMarker(res, MarkerKind.UNREAL_CORE);
-				} else {
-					res = ucmin.getAuxCore();
-					if (!res.isEmpty()) {
-						consolePrinter.println("Found unrealizable core with " + res.size()
-								+ " elements. See markers in specification file.");
-						createMarker(res, MarkerKind.UNREAL_CORE);
-					} else {
-						consolePrinter.println("Unable to compute unrealizable core because the specification is realizable.");
-					}
+					writeSpecElements(result, MarkerKind.UNREAL_CORE, true);
 				}
-				gm.free();
+				break;
+				
+			case MAX_REAL:	
+				if (realizable) {
+					consolePrinter.println("Specification is realizable. The maximal set of guarantees that keeps realizability is all guarantees.");
+				} else {					
+					AbstractDdmin<Integer> rmax = new AbstractDdmin<Integer>() {
+						@Override 
+						public boolean check(List<Integer> part) {
+							List<Integer> negPart = new ArrayList<Integer>(builder.getTraceList());
+							assert(negPart.containsAll(part));
+							negPart.removeAll(part);
+							return RealizabilityCheck.isRealizable(builder.build(negPart));
+						}					
+					};
+					List<Integer> res = new ArrayList<Integer>(builder.getTraceList());
+					List<Integer> neg = new ArrayList<Integer>(rmax.minimize(builder.getTraceList()));
+					res.removeAll(neg);
+					consolePrinter.println(
+							"Found a maximal realizable set of guarantees with " + res.size() + " elements, at lines " + TraceIdentifier.formatLines(res) + ". See markers in specification file.");
+	
+					writeSpecElements(res, MarkerKind.UNREAL_CORE, true);
+				}
 				break;
 				
 			case ALL_CORES:
 				if (realizable) {
 					consolePrinter.println("Specification is realizable. Cannot compute guarantees core.");
 				} else {
-					glb = new GlobalCoreUtility(gm);
-					List<List<BehaviorInfo>> allCores = glb.getAllCores();
+
+					AllUnrealizebleCores all = new AllUnrealizebleCores(gm, quickCore);
+					all.computeAllCores(builder.getTraceList());
+					List<List<Integer>> allCores = all.getCoreData().getAllCores();
 	
-					for (List<BehaviorInfo> c : allCores) {
-						consolePrinter.println("Core #" + (allCores.indexOf(c)+1) + " is");
+					for (List<Integer> c : allCores) {
+						Collections.sort(c);
+						consolePrinter.println("Core #" + (allCores.indexOf(c)+1) + " at lines " + TraceIdentifier.formatLines(c) + " is");
 						writeSpecElements(c, MarkerKind.UNREAL_CORE, false);
 						consolePrinter.println("");
+					}
+					
+					List<Integer> intersection = all.getCoreData().getCoresIntersection();
+					if (intersection.size()==0) {
+						consolePrinter.println("The intersection of all the cores is empty.");
+					} else {
+						consolePrinter.println("Found " + intersection.size() + " elements that belong to all cores, at lines " + TraceIdentifier.formatLines(intersection) + ". See markers in specification file.");						
+						writeSpecElements(intersection, MarkerKind.UNREAL_CORE, true);
 					}
 				}
 				break;
@@ -228,14 +276,47 @@ public class CoreMenu extends SyntechAction<CoresActionID> {
 			default:
 				break;
 		}
+		gm.free();
+		GR1GameExperiments.WITH_MEMORY = prevUseMemory; // restore previous choice
 	}
 	
-	private void writeSpecElements(List<BehaviorInfo> elems, MarkerKind k, boolean mark) {
+	/**
+	 * computes a guarantees core while considering QuickCore menu option
+	 * @param gm
+	 * @param builder
+	 * @param check
+	 * @param quickCore
+	 * @return
+	 */
+	private List<Integer> computeGarCore(GameModel gm, SysTraceInfoBuilder builder, boolean quickCore) {
+		Checker<Integer> check = new Checker<Integer>() {
+			protected boolean check(List<Integer> sys) {
+				return !RealizabilityCheck.isRealizable(builder.build(sys));	
+			}
+		};
+		List<Integer> coreGars = new ArrayList<Integer>();
+		if (quickCore) {
+			QuickCore qc = new QuickCore(gm, check);
+			coreGars.addAll(qc.minimize(ti.getSysTraces()));
+		} else {						
+			AbstractDdmin<Integer> ucmin = new AbstractDdmin<Integer>() {
+				@Override 
+				public boolean check(List<Integer> part) {
+					return !RealizabilityCheck.isRealizable(builder.build(part));
+				}					
+			};
+			coreGars.addAll(ucmin.minimize(builder.getTraceList()));						
+		}
+		return coreGars;
+	}
+	
+	private void writeSpecElements(List<Integer> elems, MarkerKind k, boolean mark) {
 		try {
-			for (BehaviorInfo b : elems) {
-				consolePrinter.println(b.toString() + " starts at line " + NodeModelUtils.getNode(Tracer.getTarget(b.traceId)).getStartLine());
+			for (Integer b : elems) {
+				consolePrinter.println(ti.formatMarked(b));
+				
 				if (mark) {
-					createMarker(b.traceId, k.getMessage(), k);
+					createMarker(b, k.getMessage(), k);
 				}
 			}
 		} catch (Exception e) {
@@ -246,7 +327,7 @@ public class CoreMenu extends SyntechAction<CoresActionID> {
 	private void writeVars(List<ModuleBDDField> elems) {
 		try {
 			for (ModuleBDDField b : elems) {
-				consolePrinter.println(b.toString() + " starts at line " + NodeModelUtils.getNode(Tracer.getTarget(b.getTraceId())).getStartLine());
+				consolePrinter.println("At line " + TraceIdentifier.getLine(b.getTraceId()) + " variable " + b.toString());
 			    createMarker(b.getTraceId(), MarkerKind.CUSTOM_TEXT_MARKER.getMessage(), MarkerKind.CUSTOM_TEXT_MARKER);
 			}
 		} catch (Exception e) {

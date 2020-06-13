@@ -7,9 +7,10 @@ Bundle-Activator: tau.smlab.syntech.cores.ui.Activator
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
  org.eclipse.ui.console;bundle-version="3.7.1",
- tau.smlab.syntech.cores;bundle-version="1.0.0",
  org.eclipse.emf.ecore;bundle-version="2.13.0",
- tau.smlab.syntech.games;bundle-version="1.0.0"
+ tau.smlab.syntech.games;bundle-version="1.0.0",
+ tau.smlab.syntech.gamemodel,
+ tau.smlab.syntech.cores
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Automatic-Module-Name: tau.smlab.syntech.cores.ui
 Bundle-ActivationPolicy: lazy
@@ -32,3 +33,4 @@ Import-Package: org.eclipse.core.resources,
  tau.smlab.syntech.ui.extension,
  tau.smlab.syntech.ui.jobs,
  tau.smlab.syntech.ui.preferences
+Export-Package: tau.smlab.syntech.cores.ui

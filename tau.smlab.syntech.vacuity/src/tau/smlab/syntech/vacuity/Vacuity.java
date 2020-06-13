@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 import net.sf.javabdd.BDD;
+import net.sf.javabdd.BDDDomain;
 import tau.smlab.syntech.bddgenerator.BDDGenerator;
 import tau.smlab.syntech.checks.BDDBuilder;
 import tau.smlab.syntech.checks.GR1Implication;
@@ -66,7 +67,7 @@ public class Vacuity {
 		// no need for player modules
 		gm.getSys().free(); 
 		gm.getEnv().free();
-		bot = new BehaviorInfo(Env.FALSE(), null, null, null, -1, false);
+		bot = new BehaviorInfo(Env.FALSE(), null, null, null, null, -1, false);
 	}
 	
 	public void free() {
@@ -221,9 +222,25 @@ public class Vacuity {
 	
 	public static boolean isTrivial(GameModel model, BehaviorInfo b) {
 		
-		return (b.isInitial() && b.initial.isOne() ||
-				b.isSafety() && b.safety.isOne() ||
-				b.isJustice() && (b.justice.isOne() || GR1Implication.imply(getRelevantAux(b), b)));
+		return (b.isInitial() && isTrue(b.initial) ||
+				b.isSafety() && isTrue(b.safety) ||
+				b.isJustice() && (isTrue(b.justice) || GR1Implication.imply(getRelevantAux(b), b)));
 
+	}
+	
+	/**
+	 * checks if a BDD is True relevant to its variables domain (avoiding problems with domains not 2^n)
+	 * 
+	 * @param b
+	 * @return
+	 */
+	private static boolean isTrue(BDD b) {
+		BDD domains = Env.TRUE();
+		for (BDDDomain d : b.support().getDomains()) {
+			domains.andWith(d.domain());
+		}
+		boolean r = domains.imp(b).isOne();
+		domains.free();
+		return r;
 	}
 }

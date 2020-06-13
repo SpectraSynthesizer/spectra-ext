@@ -62,7 +62,7 @@ public class UnreachableValues extends Vacuity {
 		Map<BehaviorInfo, List<Integer>> result = new HashMap<BehaviorInfo, List<Integer>>();
 
 	    long startTime = System.currentTimeMillis();
-	    BehaviorInfo aSafety = new BehaviorInfo(null, Env.TRUE(), null, null, 0, false); // use  a general safety for behavior extraction
+	    BehaviorInfo aSafety = new BehaviorInfo(null, Env.TRUE(), null, null, null, 0, false); // use  a general safety for behavior extraction
 		List<BehaviorInfo> behaviors = sys ? getSysPremiseSet(aSafety) : getEnvPremiseSet(aSafety);
 		BDDBuilder.setBehaviors(behaviors);
 		outerloop:

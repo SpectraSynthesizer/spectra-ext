@@ -18,7 +18,8 @@ Require-Bundle: org.eclipse.jface;bundle-version="3.13.1",
  tau.smlab.syntech.ui.extension;bundle-version="1.0.0",
  org.eclipse.core.runtime;bundle-version="3.13.0",
  tau.smlab.syntech.games;bundle-version="1.0.0",
- tau.smlab.syntech.repair;bundle-version="1.0.0"
+ tau.smlab.syntech.repair;bundle-version="1.0.0",
+ tau.smlab.syntech.ui
 Export-Package: tau.smlab.syntech.counterstrategy.repair
 Import-Package: tau.smlab.syntech.games.gr1.wellseparation
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8

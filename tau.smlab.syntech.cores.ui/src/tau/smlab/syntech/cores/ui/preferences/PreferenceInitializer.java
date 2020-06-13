@@ -26,23 +26,29 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 */
 
-package tau.smlab.syntech.richcontrollerwalker.ui.action;
+package tau.smlab.syntech.cores.ui.preferences;
 
-import tau.smlab.syntech.ui.extension.ActionID;
+import org.eclipse.core.runtime.preferences.AbstractPreferenceInitializer;
+import org.eclipse.jface.preference.IPreferenceStore;
 
-public enum ControllerWalkerActionsID implements ActionID {
-	WALK_SYMBOLIC_CONTROLLER_SYS("Walk as System Player"), WALK_SYMBOLIC_CONTROLLER_ENV(
-			"Walk as Environment Player"), WALK_SYMBOLIC_CONTROLLER_BOTH(
-					"Walk as Both Players");
+import tau.smlab.syntech.cores.ui.Activator;
+import tau.smlab.syntech.cores.ui.preferences.PreferenceConstants;
 
-	private ControllerWalkerActionsID(String t) {
-		this.menuText = t;
+/**
+ * Class used to initialize default preference values.
+ */
+public class PreferenceInitializer extends AbstractPreferenceInitializer {
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.eclipse.core.runtime.preferences.AbstractPreferenceInitializer#
+	 * initializeDefaultPreferences()
+	 */
+	public void initializeDefaultPreferences() {
+		IPreferenceStore store = Activator.getDefault().getPreferenceStore();
+		store.setDefault(PreferenceConstants.USE_QUICKCORE, true);
+		store.setDefault(PreferenceConstants.REALIZABILITY_CHECK, "GR(1)");
 	}
 
-	private String menuText;
-
-	@Override
-	public String getMenuText() {
-		return menuText;
-	}
 }

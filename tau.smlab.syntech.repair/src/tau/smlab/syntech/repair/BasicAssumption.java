@@ -132,13 +132,13 @@ public class BasicAssumption {
 		BehaviorInfo bh = null;
 		switch (k) {
 		case INIT:
-			bh = new BehaviorInfo(bdd.id(), null, null, null, 0, false);
+			bh = new BehaviorInfo(bdd.id(), null, null, null, null, 0, false);
 			break;
 		case SAFETY:
-			bh = new BehaviorInfo(null, bdd.id(), null, null, 0, false);
+			bh = new BehaviorInfo(null, bdd.id(), null, null, null, 0, false);
 			break;
 		case JUSTICE:
-			bh = new BehaviorInfo(null, null, bdd.id(), null, 0, false);
+			bh = new BehaviorInfo(null, null, bdd.id(), null, null, 0, false);
 			break;
 		}
 

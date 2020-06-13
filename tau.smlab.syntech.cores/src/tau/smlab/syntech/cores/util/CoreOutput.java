@@ -26,23 +26,66 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 */
 
-package tau.smlab.syntech.richcontrollerwalker.ui.action;
+package tau.smlab.syntech.cores.util;
 
-import tau.smlab.syntech.ui.extension.ActionID;
+import java.io.PrintStream;
+import java.util.List;
 
-public enum ControllerWalkerActionsID implements ActionID {
-	WALK_SYMBOLIC_CONTROLLER_SYS("Walk as System Player"), WALK_SYMBOLIC_CONTROLLER_ENV(
-			"Walk as Environment Player"), WALK_SYMBOLIC_CONTROLLER_BOTH(
-					"Walk as Both Players");
+/**
+ * Class for outputing cores. 
+ * This allows writing cores to a PrintStream
+ * 
+ * @author shalom
+ *
+ * @param <T>
+ */
 
-	private ControllerWalkerActionsID(String t) {
-		this.menuText = t;
+public class CoreOutput<T> {
+
+	private String specName = "";
+	private PrintStream output = null;
+	private long startTime = 0;
+	
+	public enum Label {
+		BEGIN, CORE, INTERSECT, END
+	}
+	
+	public CoreOutput(String name, PrintStream out) {
+		specName = name;
+		output = out;
+	}
+	
+	public void writeBegin() {
+		output.println(specName + "," + Label.BEGIN);
+		startTime = System.currentTimeMillis();
+	}
+	
+	public void writeCoreIntersection(List<T> inter, int checks, int actual) {
+		output.println(specName + "," + 
+					Label.INTERSECT + "," + 
+					inter.size() + "," + 
+					(System.currentTimeMillis() - startTime) + "," + 
+					checks + "," + 
+					actual + "," +
+					format(inter));
+	}
+	
+	public void writeCore(List<T> core, int checks, int actual) {
+		output.println(specName + "," + 
+				Label.CORE + "," + 
+				core.size() + "," + 
+				(System.currentTimeMillis() - startTime) + "," + 
+				checks + "," + 
+				actual + "," +
+				format(core));
 	}
 
-	private String menuText;
-
-	@Override
-	public String getMenuText() {
-		return menuText;
+	public void writeEnd() {
+		output.println(specName + "," + Label.END);
+	}
+	
+	// allows outputing lists of type T as strings. Override this if it's not standard
+	protected String format(List<T> core) {
+		return core.toString();
 	}
 }

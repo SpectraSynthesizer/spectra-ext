@@ -16,6 +16,16 @@
 	</menu>
       </menuContribution>
    </extension>
+   <extension
+         name="Cores"
+         point="org.eclipse.ui.preferencePages">
+      <page
+            category="tau.smlab.syntech.ui.preferences.PreferencePage"
+            class="tau.smlab.syntech.cores.ui.preferences.PreferencePage"
+            id="tau.smlab.syntech.cores.ui.preferences.PrefrencePage"
+            name="Cores">
+      </page>
+   </extension>
 
 </plugin>
 

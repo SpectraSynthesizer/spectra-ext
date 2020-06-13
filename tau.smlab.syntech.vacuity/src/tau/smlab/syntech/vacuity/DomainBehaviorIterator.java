@@ -60,7 +60,7 @@ public class DomainBehaviorIterator implements Iterator<BehaviorInfo >{
 	@Override
 	public BehaviorInfo next() {
 		BDD val = bddDomain.ithVar(curr++);
-		BehaviorInfo behave = new BehaviorInfo(null, val.notWithDoms(), null, null, 0, false);
+		BehaviorInfo behave = new BehaviorInfo(null, val.notWithDoms(), null, null, null, 0, false);
 		return behave;
 	}
 	

@@ -31,11 +31,14 @@ package tau.smlab.syntech.cores.ui;
 import tau.smlab.syntech.ui.extension.ActionID;
 
 public enum CoresActionID implements ActionID {
-	SYS_VAR_CORE("System Variables Core"),
-	ASM_CORE("Assumptions core"),
-	GLOBAL_CORE("Global Unrealizable Core"),
-	UNREALIZABLE_CORE("Unrealizable Core"),
-	ALL_CORES("All Unrelizable Cores");
+
+	ASM_CORE("Find an Assumptions Core"),
+	MAX_REAL("Find Maximal Realizable Guarantees"),
+	SYS_VAR_CORE("Find a System Variables Unrealizable Core"),
+	GLOBAL_CORE("Find a Global Unrealizable Core"),
+	ALL_CORES("Find All Unrealizable Cores"),
+	UNREALIZABLE_CORE("Find an Unrealizable Core");
+
 	
 	private String text;
 

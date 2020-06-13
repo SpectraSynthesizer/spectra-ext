@@ -26,23 +26,58 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 */
 
-package tau.smlab.syntech.richcontrollerwalker.ui.action;
+package tau.smlab.syntech.cores.util;
 
-import tau.smlab.syntech.ui.extension.ActionID;
+import java.util.ArrayList;
+import java.util.List;
 
-public enum ControllerWalkerActionsID implements ActionID {
-	WALK_SYMBOLIC_CONTROLLER_SYS("Walk as System Player"), WALK_SYMBOLIC_CONTROLLER_ENV(
-			"Walk as Environment Player"), WALK_SYMBOLIC_CONTROLLER_BOTH(
-					"Walk as Both Players");
+/**
+ * This class holds cores, all cores intersection, computes global cores etc.
+ * 
+ * @author shalom
+ *
+ */
 
-	private ControllerWalkerActionsID(String t) {
-		this.menuText = t;
+public class CoreData<T> {
+	protected List<List<T>> cores = null;
+	private List<T> coresIntersection = null;
+
+	public CoreData() {
+		cores = new ArrayList<List<T>>();
+		coresIntersection = null;
 	}
-
-	private String menuText;
-
-	@Override
-	public String getMenuText() {
-		return menuText;
+	
+	public List<List<T>> getAllCores() {
+		return cores;
+	}	
+	
+	public List<T> getGlobalCore() 
+	{
+		if (cores.isEmpty()) { // for completeness only. Shouldn't happen.
+			return null;
+		}
+		List<T> global = cores.get(0);
+		for (List<T> c : cores) {
+			if (c.size() < global.size()) {
+				global = c;
+			}
+		}
+		return global;
+	}
+	
+	public void registerCore(List<T> core) {
+		cores.add(core);
+	}
+	
+	public List<T> getCoresIntersection() {
+		return coresIntersection;
+	}
+	
+	public void setCoresIntersection(List<T> intersect) {
+		coresIntersection = new ArrayList<T>(intersect);
+	}
+	
+	public boolean hasCoresIntersection() {
+		return coresIntersection!=null;
 	}
 }

@@ -34,17 +34,21 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.PrintStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.Stack;
+import java.util.zip.ZipFile;
+
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
@@ -54,6 +58,7 @@ import net.sf.javabdd.BDD.BDDIterator;
 import net.sf.javabdd.BDDDomain;
 import tau.smlab.syntech.games.controller.symbolic.SymbolicController;
 import tau.smlab.syntech.games.controller.symbolic.SymbolicControllerReaderWriter;
+import tau.smlab.syntech.games.util.SaveLoadWithDomains;
 import tau.smlab.syntech.jtlv.BDDPackage;
 import tau.smlab.syntech.jtlv.BDDPackage.BBDPackageVersion;
 import tau.smlab.syntech.jtlv.Env;
@@ -319,19 +324,30 @@ public class SymbolicWalker {
 		IPath filePath = specFile.getLocation();
 		String path = filePath.uptoSegment(filePath.segmentCount() - 1).toString();
 		path = path + "/out/";
-		Set<String> sysVarsNames = null;
-		Set<String> envVarsNames = null;
+		Map<String, String[]> sysVarsMap = null;
+		Map<String, String[]> envVarsMap = null;
 		try {
-			sysVarsNames = SymbolicControllerReaderWriter.readSysVarNames(path);
-			envVarsNames = SymbolicControllerReaderWriter.readEnvVarNames(path);
-			ctrl = SymbolicControllerReaderWriter.readSymbolicController(path);
+			
+		    sysVarsMap = new HashMap<>();
+		    envVarsMap = new HashMap<>();
+		    SaveLoadWithDomains.loadStructureAndDomains(path + "vars.doms", sysVarsMap, envVarsMap);
+		    
+			BDD init = Env.loadBDD(path + "controller.init.bdd");
+			BDD trans = Env.loadBDD(path + "controller.trans.bdd");
+			
+			init = init.exist(Env.globalPrimeVars());
+		    ctrl = new SymbolicController();
+		    ctrl.setTrans(trans);
+		    ctrl.setInit(init);
+			
 		} catch (IOException e) {
-			// e.printStackTrace();
+			 e.printStackTrace();
+			 throw new FileNotFoundException(ControllerConstants.MISMATCHED_CONTROLLER);
 		}
 
-		if (!isSpecFileMatchesController(path + "vars.doms")) {
-			throw new FileNotFoundException(ControllerConstants.MISMATCHED_CONTROLLER);
-		}
+//		if (!isSpecFileMatchesController(path + "vars.doms")) {
+//			throw new FileNotFoundException(ControllerConstants.MISMATCHED_CONTROLLER);
+//		}
 
 		if (!ExpressionHelper.specContainsEnergyValVar(this.specFile) && Env.getVar(ENERGY_VAL) != null) {
 			this.engUpperBound = Env.getVar(ENERGY_VAL).getDomain().size().longValue() - 1;
@@ -339,8 +355,8 @@ public class SymbolicWalker {
 			this.engUpperBound = -1;
 		}
 
-		envVars = getModuleBDDVarSet(envVarsNames);
-		sysVars = getModuleBDDVarSet(sysVarsNames);
+		envVars = getModuleBDDVarSet(envVarsMap.keySet());
+		sysVars = getModuleBDDVarSet(sysVarsMap.keySet());
 
 		initSteps();
 	}

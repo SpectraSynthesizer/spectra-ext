@@ -29,215 +29,143 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package tau.smlab.syntech.cores;
 
 import java.util.List;
+import java.util.Map;
 import java.util.HashMap;
-import tau.smlab.syntech.gamemodel.BehaviorInfo;
+import java.util.Iterator;
+import java.util.ArrayList;
 
 /**
  * The class GlobalCoreUtility provides a computation of all cores and 
  * a global minimum core by using simple recursion
  * We employ a top down approach.
- * We use memoization in order to avoid duplicate realizability check.
+ * We use memoization in order to avoid unnecessary realizability check.
  * 
  * @author shalom
  *
  */
 
-import java.util.ArrayList;
 
-import tau.smlab.syntech.gamemodel.GameModel;
-import tau.smlab.syntech.gamemodel.ModuleException;
-import tau.smlab.syntech.gamemodel.PlayerModule;
-import tau.smlab.syntech.games.gr1.GR1Game;
-import tau.smlab.syntech.games.gr1.GR1GameMemoryless;
-
-public class GlobalCoreUtility {
-	private GameModel model = null;
-	private HashMap<List<BehaviorInfo>, Boolean> results = null;
-	private List<List<BehaviorInfo>> cores = new ArrayList<List<BehaviorInfo>>();
-	List<BehaviorInfo> global = null;
-	private List<BehaviorInfo> aux;
-	private PlayerModule sys;	
-	
-	private int checkCounter = 0;
+public abstract class GlobalCoreUtility<T> extends AllCoresBase<T> {
+	private HashMap<List<T>, Boolean> results = null;
+	private int checks = 0;
+	private int actualChecks = 0;
 	
 	/**
 	 * This enum is for lookup results
 	 * NONE means we know nothing.
-	 * REL means we know realizability since we checked the set or some of its supersets with that result
-	 * UNREL_FOUND means both that we know unrealizability and we checked the specific set so no need to work on subsets
-	 * UNREL_UNFOUND means we deduce unrealizability from a subset, but we haven't encountered our set before so it may contain unknown cores
+	 * NEG means we know it is negative since we checked the set or some of its supersets with that result
+	 * POS_FOUND means both that we know positivity and we checked the specific set so no need to work on subsets
+	 * UNREL_UNFOUND means we deduce positivity from a subset, but we haven't encountered our set before so it may contain unknown cores
 	 *
 	 */
 	private enum LookupResult { 
-		NONE, REL, UNREL_FOUND, UNREL_UNFOUND;
+		NONE, NEG, POS_FOUND, POS_UNFOUND;
 		
 		/**
-		 * The result of the lookup was that we know unrealizability
+		 * The result of the lookup was positive
 		 * @return
 		 */
-		public boolean unrealizable() {
-			return this==UNREL_FOUND || this==UNREL_UNFOUND;
+		public boolean pos() {
+			return this==POS_FOUND || this==POS_UNFOUND;
 		}
 		
 		/**
-		 * The original lookup (for the unrealizable set) showed we haven't looked into it before
+		 * No data or the original lookup for the positive set showed we haven't looked into it before
 		 * @return
 		 */
 		public boolean unknown() {
-			return this==NONE || this==UNREL_UNFOUND;
+			return this==NONE || this==POS_UNFOUND;
 		}
 	}
-	
-	public GlobalCoreUtility(GameModel m) {
-		model = m;
-	    sys = model.getSys();
-	    aux = model.getAuxBehaviorInfo();
-	    compute();
+
+	public GlobalCoreUtility() {
+		results = new HashMap<List<T>, Boolean>();
+		checks = 0;
+		actualChecks = 0;
 	}
 	
-	public List<List<BehaviorInfo>> getAllCores() {
-		return cores;
-	}	
+	/**
+	 * report number of checks - filling an abstract method
+	 */
+	public int checks() {
+		return checks;
+	}
 	
-	public List<BehaviorInfo> getGlobalCore() {
-		return global;
+	/**
+	 * report number of actual checks - filling an abstract method
+	 */
+	public int actualChecks() {
+		return actualChecks;
+	}
+	
+	public void computeAllCores(List<T> superSet) {
+		start();
+		topDown(superSet);
+		end();
 	}
 
-	/**
-	 * returns the number of actual realizability checks for analysis purposes (may be redundant)
-	 * @return
-	 */
-	public int getCheckCounter() {
-		return checkCounter;
-	}
-	
-	/** this computes all cores
-	 * We assume that the input is non-realizable.
-	 */
-	private void compute() {
-		results = new HashMap<List<BehaviorInfo>, Boolean>();
-		List<BehaviorInfo> allGar = model.getSysBehaviorInfo();
-		global = allGar;
-		computeAllSubsets(allGar);
-	}
-	
 	/**
 	 * recursively compute for all subsets of the argument
 	 * 
 	 * @param superSet
 	 */
 	
-	private void computeAllSubsets(List<BehaviorInfo> superSet) {
+	private void topDown(List<T> superSet) {
 		boolean isCore = true;
 		
-		ArrayList<BehaviorInfo> subSet = null;
-		for (BehaviorInfo b : superSet) {
-			subSet = new ArrayList<BehaviorInfo>(superSet);
+		ArrayList<T> subSet = null;
+		for (T b : new ArrayList<T>(superSet)) {
+			subSet = new ArrayList<T>(superSet);
 			subSet.remove(b);
 			LookupResult r = lookup(subSet);
-			if (r.unrealizable() || (r==LookupResult.NONE && !realizable(subSet))) {
-				isCore = false; // we have an unrealizable subset so the superset cannot be a core
-				if (r.unknown()) { // we haven't looked into this unrelizable set before
-					computeAllSubsets(subSet);
+			if (r.pos() || (r==LookupResult.NONE && actualCheck(subSet))) {
+				isCore = false; // we have a pos subset so the superset cannot be a core
+				if (r.unknown()) { // we haven't looked into this pos set before
+					topDown(subSet);
 				}
 			}
 		}
 		if (isCore) {
-			cores.add(superSet);
-			if (superSet.size() < global.size()) {
-				global = superSet;
-			}
+			registerCore(superSet);
 		}
 	}
-	
-	/**
-	 * Check for realizability for a subset of gars
-	 * Remember the set and the result
+	/** 
 	 * 
-	 * @param set a set of gars to be checked
-	 * @return
+	 * @param look up using old results
+	 * @return do we know this already from other checks? do we have this specific set checked?
 	 */
-	private boolean realizable(List<BehaviorInfo> set) {
-		if (set.equals(model.getSysBehaviorInfo())) { // we don't want to recheck the whole spec which we assume is unrealizable
-			return false; // probably dead code but keep it safe
-		}  else { // lets compute and store
-			boolean result = garsCheck(set);
-			checkCounter++;
-			results.put(set, result);
-			return result;
+	private LookupResult lookup(List<T> set) {
+		checks++;
+
+		LookupResult r = LookupResult.NONE;
+
+		Iterator<Map.Entry<List<T>, Boolean>> iter = results.entrySet().iterator();
+		while (iter.hasNext()) {
+			Map.Entry<List<T>, Boolean> entry = iter.next();
+			if (!entry.getValue() && entry.getKey().containsAll(set)) { // if set is contained in a negative set - negatuve
+				r = LookupResult.NEG;
+				break;
+			} else if (entry.getValue() && set.containsAll(entry.getKey())) { // if set contains a positive set - positive. if also vice versa, it is the exact one
+				r = entry.getKey().containsAll(set) ? LookupResult.POS_FOUND : LookupResult.POS_UNFOUND;
+				break;
+			}  
 		}
+		return r;
+	}
+	
+	private boolean actualCheck(List<T> part) {
+		actualChecks++;
+		boolean result = acCheck(part);
+		results.put(part, result);
+		return result;
 	}
 	
 	/**
-	 * Check realizability for part of the gars
+	 * Abstract check method for detecting a subset that fulfills the criterion.
+	 * Assumed to be monotonic.
 	 * 
 	 * @param part
 	 * @return
 	 */
-	private boolean garsCheck(List<BehaviorInfo> part) {
-
-	    try {
-	      buildSys(part);
-	    } catch (ModuleException e) {
-	      throw new RuntimeException(e);
-	    }
-
-	    GR1Game gr1game = new GR1GameMemoryless(model);
-	    boolean real = gr1game.checkRealizability();
-	    gr1game.free();
-
-	    return real;
-	  }
-
-	  /**
-	   * resets and then adds guarantees to sys module
-	   * 
-	   * @param part set of gars to be checked
-	   * @throws ModuleException
-	   */
-	  public void buildSys(List<BehaviorInfo> part) throws ModuleException {
-	    sys.reset();
-
-	    ArrayList<BehaviorInfo> gars = new ArrayList<BehaviorInfo>();
-	    gars.addAll(aux);
-	    gars.addAll(part);
-
-	    for (BehaviorInfo gar : gars) {
-	      if (gar.isInitial()) {
-	        sys.conjunctInitial(gar.initial.id());
-	      }
-	      if (gar.isSafety()) {
-	        sys.conjunctTrans(gar.safety.id());
-	      }
-	      if (gar.isJustice()) {
-	        sys.addJustice(gar.justice.id(), gar.traceId);
-	      }
-	    }
-	    sys.trans();
-	  }
-	  
-	  /**
-	   * 
-	   * @param set set of gars to look up
-	   * @return do we know this already from other checks? do we have this specific set checked?
-	   */
-	  private LookupResult lookup(List<BehaviorInfo> set) {
-		  // first see if we have the set as is
-		  if (results.keySet().contains(set)) {
-			  return results.get(set) ? LookupResult.REL : LookupResult.UNREL_FOUND;
-		  } else { // look for telling subsets or supersets
-			  LookupResult r = LookupResult.NONE;
-		   
-			  for (List<BehaviorInfo> k : results.keySet()) {
-				  if (results.get(k) && k.containsAll(set)) { // we already have a realizable superset 
-					  r = LookupResult.REL;
-					  break;
-				  } else if (!results.get(k) && set.containsAll(k)) { // for unrealizable sets even if we have an unrel subset we may still have others
-					  r = LookupResult.UNREL_UNFOUND;
-					  break;
-				  }  
-			  }
-			  return r;
-		  }
-	  }
+	protected abstract boolean acCheck(List<T> part);
 }

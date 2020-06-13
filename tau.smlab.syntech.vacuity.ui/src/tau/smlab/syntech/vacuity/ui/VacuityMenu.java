@@ -196,7 +196,7 @@ public class VacuityMenu extends SyntechAction<VacuityActionID> {
 			sat.init(gi, VacuityType.SAT, true, false);
 			if (SatisfiabilityCheck.compute()) {
 				consolePrinter.println("Yes. The specification is satisfiable. ");
-				consolePrinter.println("If the specification is not realizable, you can try adding some assumptions to make the it realizable. ");
+				consolePrinter.println("If the specification is not realizable, you can try adding some assumptions to make it realizable. ");
 				consolePrinter.println("But it is not sure that such an assumption exists.");
 			} else {
 				consolePrinter.println("No. The specification is not satisfiable. ");

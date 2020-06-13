@@ -34,6 +34,7 @@ import java.util.List;
 import net.sf.javabdd.BDD;
 import net.sf.javabdd.BDD.BDDIterator;
 import tau.smlab.syntech.games.controller.symbolic.SymbolicController;
+import tau.smlab.syntech.jtlv.CoreUtil;
 import tau.smlab.syntech.jtlv.Env;
 import tau.smlab.syntech.jtlv.lib.FixPoint;
 
@@ -67,7 +68,7 @@ public class ReachabilityGame {
 			// choose a random initial state from the ones leading to the target states
 			if (!foundInitial) { // if (i==layers.size()-1){
 				if (!layer.and(initialState).equals(Env.FALSE())) {
-					route.add(layer.and(initialState).satOne(Env.globalUnprimeVars()));
+					route.add(CoreUtil.satOne(layer.and(initialState), Env.globalUnprimeVars()));
 					foundInitial = true;
 				}
 				continue;

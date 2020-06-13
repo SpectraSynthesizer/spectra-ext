@@ -179,13 +179,13 @@ public class RepairInput extends RepairIO {
 				String kind = s.next();
 				switch(kind) {
 				case tokGlobalyFinaly:
-					behaviors.add(new BehaviorInfo(null, null, Env.loadBDD(mFolder.getAbsolutePath() + "/" + s.next()), null, 0, false));
+					behaviors.add(new BehaviorInfo(null, null, Env.loadBDD(mFolder.getAbsolutePath() + "/" + s.next()), null, null, 0, false));
 					break;
 				case tokGlobaly:
-					behaviors.add(new BehaviorInfo(null, Env.loadBDD(mFolder.getAbsolutePath() + "/" + s.next()), null,  null, 0, false));
+					behaviors.add(new BehaviorInfo(null, Env.loadBDD(mFolder.getAbsolutePath() + "/" + s.next()), null, null, null, 0, false));
 					break;
 				case tokInit:
-					behaviors.add(new BehaviorInfo(Env.loadBDD(mFolder.getAbsolutePath() + "/" + s.next()), null, null, null, 0, false));
+					behaviors.add(new BehaviorInfo(Env.loadBDD(mFolder.getAbsolutePath() + "/" + s.next()), null, null, null, null, 0, false));
 					break;
 				default:
 					s.next();

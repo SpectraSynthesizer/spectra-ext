@@ -109,7 +109,7 @@ public class RepairOutput extends RepairIO {
 					break;
 				}
 				out.println(prefix + formatBDDFile(repairIndex, bddNumber));
-				Env.saveBDD(mFolder.getAbsolutePath() + "/" + formatBDDFile(repairIndex, bddNumber), ba.bdd);
+				Env.saveBDD(mFolder.getAbsolutePath() + "/" + formatBDDFile(repairIndex, bddNumber), ba.bdd, true);
 				
 				File bddTextFile = new File(mFolder, formatBDDTextFile(repairIndex, bddNumber));
 				PrintStream outText = new PrintStream(new FileOutputStream(bddTextFile));
