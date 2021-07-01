@@ -96,10 +96,10 @@ public class JVTSBasedRepair extends SyntechAction<JVTSBasedRepairActionID> {
 		}
 		switch (actionID) {
 		case BFS_REPAIR:
-			repair = new BFSModelRepair(gi, 3, false, false, false, true);
+			repair = new BFSModelRepair(gi, 3, false, false, true);
 			break;
 		case FULL_APPLICATION:
-			repair = new FullApplicationModelRepair(gi, 20, false, false, false, true);
+			repair = new FullApplicationModelRepair(gi, 20, false, false, true);
 			break;	
 		case ALUR_REPAIR:
 			HashMap<String, ArrayList<String>> P = new HashMap<String, ArrayList<String>>();

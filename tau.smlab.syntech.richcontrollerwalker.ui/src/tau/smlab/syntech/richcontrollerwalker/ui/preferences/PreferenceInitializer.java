@@ -47,9 +47,8 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
 	 */
 	public void initializeDefaultPreferences() {
 		IPreferenceStore store = Activator.getDefault().getPreferenceStore();
-		store.setDefault(PreferenceConstants.WALKING_DEPTH, 0);
 		store.setDefault(PreferenceConstants.ALTERNATIVE_STEP_COUNT, 100);
 		store.setDefault(PreferenceConstants.LOG_ACTIVE_ON_START, true);
-		}
+	}
 
 }

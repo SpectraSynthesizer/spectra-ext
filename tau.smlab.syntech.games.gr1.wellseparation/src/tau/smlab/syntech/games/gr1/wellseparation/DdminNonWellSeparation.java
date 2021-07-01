@@ -32,13 +32,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.sf.javabdd.BDD;
+import tau.smlab.syntech.cores.domainagnostic.AbstractDdmin;
 import tau.smlab.syntech.gamemodel.BehaviorInfo;
 import tau.smlab.syntech.gamemodel.GameModel;
 import tau.smlab.syntech.gamemodel.ModuleException;
 import tau.smlab.syntech.gamemodel.PlayerModule;
 import tau.smlab.syntech.games.gr1.GR1Game;
 import tau.smlab.syntech.games.gr1.wellseparation.WellSeparationChecker.Positions;
-import tau.smlab.syntech.games.util.AbstractDdmin;
 import tau.smlab.syntech.jtlv.Env;
 
 /**

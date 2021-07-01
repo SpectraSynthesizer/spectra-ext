@@ -28,36 +28,37 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package tau.smlab.syntech.cores;
 
-/**
- * @author shalom
- */
-
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.platform.commons.util.Preconditions;
 
+import tau.smlab.syntech.cores.domainagnostic.MinimizerFactory;
+import tau.smlab.syntech.cores.domainagnostic.MinimizerType;
+import tau.smlab.syntech.cores.interfaces.Minimizer;
 import tau.smlab.syntech.cores.util.Checker;
 import tau.smlab.syntech.gamemodel.GameModel;
 import tau.smlab.syntech.gamemodel.util.EnvTraceInfoBuilder;
 import tau.smlab.syntech.gamemodel.util.SysTraceInfoBuilder;
 import tau.smlab.syntech.gamemodel.util.TraceIdentifier;
 import tau.smlab.syntech.games.gr1.GR1GameExperiments;
-import tau.smlab.syntech.games.util.AbstractDdmin;
 
 /**
  * Computes an unrealizable core of specified sys behaviors
  * Allows a base which is an assured part of a core while others are minimized
  * Changes the game model
  * 
- * Minimizes the justices first using ddmin, and if none needed removes justice assumptions
- * Minimizes safeties using ddmin
+ * Minimizes the justices first using a domain-agnostic minimizer (ddmin as default), and if none needed removes justice assumptions
+ * Minimizes safeties using a minimizer of the same type
  * Inis are minimized using the win region
+ * Optional base set of guarantees to build on. Note: Must be a subset of _all_ cores
+ * Allows statistics about running times and number of realizability checks.
+ * 
  * 
  * @author shalom
  *
  */
 
-public class QuickCore {
+public class QuickCore implements Minimizer<Integer> {
 	
 	private GameModel gm = null;
 	private Checker<Integer> checker = null;
@@ -69,6 +70,8 @@ public class QuickCore {
 	private List<Integer> newEnv = null;
 	private List<Integer> base = null; // those must be in the core we find, and not in the part we ask to minimize, nor in the result
 	private Stats stats = null;
+	private MinimizerType mtype = null;
+	private MinimizerFactory<Integer> factory = null; 
 	
 	public class Stats {
 		public long iniTime;
@@ -79,6 +82,10 @@ public class QuickCore {
 	}
 	
 	public QuickCore(GameModel gm, Checker<Integer> c) {
+		this(gm, c, MinimizerType.DDMIN);
+	}
+	
+	public QuickCore(GameModel gm, Checker<Integer> c, MinimizerType t) {
 		this.gm = gm;
 		checker = c;
 		ti = new TraceIdentifier(gm);
@@ -88,6 +95,8 @@ public class QuickCore {
 		ini = new ArrayList<Integer>();
 		newEnv = new ArrayList<Integer>();
 		base = new ArrayList<Integer>();
+		mtype = t;
+		factory = new MinimizerFactory<Integer>();
 	}
 
 	/**
@@ -155,15 +164,15 @@ public class QuickCore {
 
 		if (ti.countType(base, TraceIdentifier.Type.JUST)>0 || !unrealizable(newSys)) { // we need some of the justices for unrealizability, compute core of them alone
 			newEnv = ti.getEnvTraces(); // env remains the same
-			AbstractDdmin<Integer> justFinder = new AbstractDdmin<Integer>() {
+			Minimizer<Integer> justFinder = factory.makeMinimizer(mtype, new Checker<Integer>() {
 				@Override 
 				public boolean check(List<Integer> part) {
 					List<Integer> checked = new ArrayList<Integer>(nonJust);
 					checked.addAll(base);
 					checked.addAll(part);
 					return unrealizable(checked);
-				}					
-			};
+				}
+			});
 			
 			justs.addAll(justFinder.minimize(allJusts));
 			newSys.addAll(justs);
@@ -191,7 +200,7 @@ public class QuickCore {
 		for (Integer t : nonJust) {
 			(ti.getType(t)==TraceIdentifier.Type.SAFE || ti.getKind(t)==TraceIdentifier.Kind.COMPLEX ? nonIni : ini).add(t);
 		}
-		AbstractDdmin<Integer> finder = new AbstractDdmin<Integer>() {
+		Minimizer<Integer> finder = factory.makeMinimizer(mtype, new Checker<Integer>() {
 			@Override 
 			public boolean check(List<Integer> part) {
 				List<Integer> partAndJusts = new ArrayList<Integer>(justs);
@@ -200,7 +209,7 @@ public class QuickCore {
 				partAndJusts.addAll(ini);
 				return unrealizable(partAndJusts);
 			}					
-		};
+		});
 		nonJust = new ArrayList<Integer>(finder.minimize(nonIni));
 		nonJust.addAll(ini);
 		buildCurrSys();	
@@ -236,6 +245,6 @@ public class QuickCore {
 	}
 	
 	private boolean unrealizable(List<Integer> part) {
-			return checker.wrappedCheck(part);
+		return checker.wrappedCheck(part);
 	}
 }

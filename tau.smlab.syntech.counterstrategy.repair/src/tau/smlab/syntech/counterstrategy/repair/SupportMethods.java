@@ -43,7 +43,6 @@ import tau.smlab.syntech.gamemodel.util.GameBuilderUtil;
 import tau.smlab.syntech.games.gr1.GR1Game;
 import tau.smlab.syntech.games.gr1.GR1GameExperiments;
 import tau.smlab.syntech.games.gr1.GR1GameImplC;
-import tau.smlab.syntech.games.gr1.unreal.DdminUnrealizableCore;
 import tau.smlab.syntech.jtlv.BDDPackage;
 import tau.smlab.syntech.jtlv.Env;
 import tau.smlab.syntech.jtlv.env.module.ModuleBDDField;
@@ -122,17 +121,6 @@ public class SupportMethods  {
 	  return realizable;
   }
 
-  public static void computeAndSetGurCore(GameModel model) {
-	  DdminUnrealizableCore ucmin = new DdminUnrealizableCore(model);
-	  List<BehaviorInfo> res = new ArrayList<BehaviorInfo>();
-	  try {
-		  res = ucmin.minimize(model.getSysBehaviorInfo());
-		  GameBuilderUtil.buildSys(model, new ArrayList<BehaviorInfo>(res));
-	  } catch (Exception e) {
-		  e.printStackTrace();
-	  }
-  }
-  
   /**
    * checks for, and removes unhelpful assumptions
    * assumes that the model already has a locally minimal set of gars

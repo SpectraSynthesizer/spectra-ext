@@ -75,12 +75,11 @@ public abstract class ModelRepair extends AbstractRepair {
 	protected int alpha = 2; // maximum BFS depth.
 	protected List<Long> runtimes = new ArrayList<Long>();	
 	
-	public ModelRepair(GameInput gameInput, int alpha, boolean merge, boolean edgeData, boolean cores, boolean repairCore) {
+	public ModelRepair(GameInput gameInput, int alpha, boolean merge, boolean edgeData, boolean repairCore) {
 		gi = gameInput;
 		this.alpha = alpha;
 		mergeNodes = merge;
 		useEdgeData = edgeData;
-		useCores = cores;
 		withRepairCore = repairCore;
 		
 		results = new ArrayList<List<BasicAssumption>>();

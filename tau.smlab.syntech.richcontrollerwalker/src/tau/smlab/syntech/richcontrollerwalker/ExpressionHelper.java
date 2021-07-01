@@ -31,51 +31,115 @@ package tau.smlab.syntech.richcontrollerwalker;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import org.apache.commons.io.IOUtils;
-import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.QualifiedName;
 
 import net.sf.javabdd.BDD;
 import tau.smlab.syntech.bddgenerator.BDDGenerator;
 import tau.smlab.syntech.gameinput.model.Constraint;
 import tau.smlab.syntech.gameinput.model.GameInput;
-import tau.smlab.syntech.gameinput.model.Variable;
 import tau.smlab.syntech.gameinputtrans.TranslationProvider;
 import tau.smlab.syntech.gameinputtrans.translator.DefaultTranslators;
 import tau.smlab.syntech.gameinputtrans.translator.Translator;
-import tau.smlab.syntech.spectragameinput.ErrorsInSpectraException;
 import tau.smlab.syntech.spectragameinput.SpectraInputProvider;
-import tau.smlab.syntech.spectragameinput.SpectraTranslationException;
 
-public class ExpressionHelper {
+public final class ExpressionHelper {
+	private static final String EXP_VALIDATOR_PREFIX = "EXP";
+	private static int expressionCounter = 0;
+	private static Spec spec;
 
-	private static final String ENERGY_VAL = "energyVal";
-	static int expressionCounter = 0;
+	// Suppress default constructor for noninstantiability
+	private ExpressionHelper() {
+		throw new AssertionError();
+	}
+
+	public static Spec getSpec() {
+		return spec;
+	}
+
+	static void setSpec(Spec newSpec) {
+		spec = newSpec;
+	}
+
+	public static void setPersistentProperty(final QualifiedName propertyQualifier, final String value) {
+		try {
+			spec.setPersistentProperty(propertyQualifier, value);
+		} catch (CoreException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static Map<Integer, String> getPersistentPropsByPrefix(final String prefix) {
+		Map<QualifiedName, String> presistMap = getSpec().getPersistentProperties();
+		Map<Integer, String> loadedProps = new HashMap<>();
+		for (QualifiedName qualName : presistMap.keySet()) {
+			String qualifier = qualName.getQualifier();
+			try {
+				if (qualifier.startsWith(prefix)) {
+					Integer id = Integer.decode(qualifier.split(prefix)[1]);
+					loadedProps.put(id, presistMap.get(qualName));
+				}
+			} catch (Exception e) {
+				// Remove problematic property
+				ExpressionHelper.setPersistentProperty(qualName, null);
+			}
+		}
+		return loadedProps;
+	}
+
+	static final class ExpressionTranslator implements Translator {
+
+		@Override
+		public void translate(GameInput input) {
+			List<Constraint> sysConstraints = input.getSys().getConstraints();
+			Iterator<Constraint> sysConstraintsItr = sysConstraints.iterator();
+
+			// Remove Guarantees
+			while (sysConstraintsItr.hasNext()) {
+				// Remove non-breakpoint guarantees
+				String garName = sysConstraintsItr.next().getName();
+				if ((garName != null) && garName.startsWith(EXP_VALIDATOR_PREFIX)) {
+					continue;
+				}
+				sysConstraintsItr.remove();
+			}
+
+			input.getSys().setConstraints(sysConstraints);
+
+			// Remove Assumptions
+			input.getEnv().getConstraints().clear();
+		}
+	}
+
+	private static void advanceCounter() {
+		expressionCounter++;
+	}
 
 	/**
 	 * 
 	 * @param expression
-	 * @param specFile
-	 * @param engUpperBound
-	 *            the energy upper bound. If equals to -1, the given spec has no
-	 *            energy constraints
 	 * @return
 	 * @throws IOException
 	 * @throws CoreException
 	 */
-	public static BDD addExpression(String expression, IFile specFile, long engUpperBound)
-			throws IOException, CoreException {
+	public static BDD getBddFromExpression(String expression) throws IOException, CoreException {
+		Objects.requireNonNull(expression);
 		GameInput gi;
 
-		String expName = ControllerConstants.EXP_VALIDATOR_PREFIX + Integer.toString(expressionCounter);
-		expressionCounter++;
-		byte[] updatedSpec = getUpdatedSpecContent(specFile, expression, expName, engUpperBound);
+		String expName = EXP_VALIDATOR_PREFIX + Integer.toString(expressionCounter);
+		advanceCounter();
+		byte[] updatedSpec = getUpdatedSpecContent(expression, expName);
 
 		try {
 			// Parse
-			gi = SpectraInputProvider.getGameInput(specFile, createDummySpecPath(specFile), updatedSpec);
+			gi = SpectraInputProvider.getGameInput(spec.getFile(), createDummySpecPath(), updatedSpec);
 			// Translate
 			List<Translator> transList = new ArrayList<Translator>();
 			transList.add(new ExpressionTranslator());
@@ -90,46 +154,12 @@ public class ExpressionHelper {
 				return BDDGenerator.createBdd(c.getSpec(), c.getTraceId());
 			}
 		}
-
 		return null;
 	}
 
 	/**
 	 * 
-	 * @param specFile
-	 * @return
-	 * @throws IOException
-	 * @throws CoreException
-	 * @throws SpectraTranslationException
-	 * @throws ErrorsInSpectraException
-	 */
-	public static boolean specContainsEnergyValVar(IFile specFile)
-			throws IOException, CoreException, ErrorsInSpectraException, SpectraTranslationException {
-		GameInput gi = SpectraInputProvider.getGameInput(specFile.getFullPath().toString());
-		// Translate
-		List<Translator> transList = new ArrayList<Translator>();
-		transList.add(new ExpressionTranslator());
-		transList.addAll(DefaultTranslators.getDefaultTranslators());
-		TranslationProvider.translate(gi, transList);
-
-		for (Variable var : gi.getSys().getVars()) {
-			if (var.getName().equals(ENERGY_VAL)) {
-				return true;
-			}
-		}
-
-		for (Variable var : gi.getEnv().getVars()) {
-			if (var.getName().equals(ENERGY_VAL)) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	/**
-	 * 
-	 * @param specFile
+	 * @param spec
 	 * @param expression
 	 * @param expName
 	 * @param engUpperBound
@@ -137,12 +167,11 @@ public class ExpressionHelper {
 	 * @throws IOException
 	 * @throws CoreException
 	 */
-	private static byte[] getUpdatedSpecContent(IFile specFile, String expression, String expName, long engUpperBound)
-			throws IOException, CoreException {
-		byte[] specContent = IOUtils.toByteArray(specFile.getContents());
+	private static byte[] getUpdatedSpecContent(String expression, String expName) throws IOException, CoreException {
+		byte[] specContent = IOUtils.toByteArray(spec.getContents());
 		byte[] engVarDeclContent = null;
-		if (engUpperBound >= 0) {
-			engVarDeclContent = createEnergyVarDecl(engUpperBound).getBytes();
+		if (spec.getEnergyUpperBound() >= 0) {
+			engVarDeclContent = createEnergyVarDecl(spec.getEnergyUpperBound()).getBytes();
 		}
 		byte[] expContent = createExpressionAsGar(expression, expName).getBytes();
 
@@ -157,14 +186,13 @@ public class ExpressionHelper {
 
 	/***
 	 * 
-	 * @param specFile
+	 * @param spec
 	 * @return
 	 */
-	private static String createDummySpecPath(IFile specFile) {
-		String watchFileName = specFile.getFullPath().removeFileExtension().lastSegment()
-				.concat(ControllerConstants.EXP_VALIDATOR_PREFIX).concat(Integer.toString(expressionCounter))
-				.concat(".spectra");
-		String watchFilePath = specFile.getFullPath().uptoSegment(specFile.getFullPath().segmentCount() - 1).toString()
+	private static String createDummySpecPath() {
+		String watchFileName = spec.getFullPath().removeFileExtension().lastSegment().concat(EXP_VALIDATOR_PREFIX)
+				.concat(Integer.toString(expressionCounter)).concat(".spectra");
+		String watchFilePath = spec.getFullPath().uptoSegment(spec.getFullPath().segmentCount() - 1).toString()
 				.concat("/").concat(watchFileName);
 		return watchFilePath;
 	}
@@ -172,8 +200,7 @@ public class ExpressionHelper {
 	/**
 	 * Creates a parsable expression from string
 	 * 
-	 * @param watch
-	 *            watch expression
+	 * @param watch watch expression
 	 * @return parsable expression
 	 */
 	private static String createExpressionAsGar(String exp, String expName) {
@@ -183,11 +210,11 @@ public class ExpressionHelper {
 	/**
 	 * Creates a parsable expression from string
 	 * 
-	 * @param watch
-	 *            watch expression
+	 * @param watch watch expression
 	 * @return parsable expression
 	 */
 	private static String createEnergyVarDecl(long engUpperBound) {
 		return "\n\nsys Int(0.." + engUpperBound + ") energyVal;";
 	}
+
 }

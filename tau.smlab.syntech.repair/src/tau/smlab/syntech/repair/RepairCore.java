@@ -31,13 +31,13 @@ package tau.smlab.syntech.repair;
 import java.util.ArrayList;
 import java.util.List;
 
+import tau.smlab.syntech.cores.domainagnostic.AbstractDdmin;
 import tau.smlab.syntech.gamemodel.BehaviorInfo;
 import tau.smlab.syntech.gamemodel.GameModel;
 import tau.smlab.syntech.gamemodel.ModuleException;
 import tau.smlab.syntech.gamemodel.PlayerModule;
 import tau.smlab.syntech.games.gr1.GR1Game;
 import tau.smlab.syntech.games.gr1.GR1GameMemoryless;
-import tau.smlab.syntech.games.util.AbstractDdmin;
 import tau.smlab.syntech.repair.BasicAssumption;
 
 /**
@@ -63,7 +63,6 @@ public class RepairCore extends AbstractDdmin<BasicAssumption> {
    * 
    * @return true if env is realizable
    */
-  @Override
   protected boolean check(List<BasicAssumption> part) {
 
     try {

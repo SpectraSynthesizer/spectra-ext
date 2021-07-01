@@ -11,7 +11,6 @@ Require-Bundle: org.eclipse.ui,
  tau.smlab.syntech.games;bundle-version="1.0.0",
  tau.smlab.syntech.gamemodel,
  tau.smlab.syntech.cores
-Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Automatic-Module-Name: tau.smlab.syntech.cores.ui
 Bundle-ActivationPolicy: lazy
 Import-Package: org.eclipse.core.resources,
@@ -24,7 +23,6 @@ Import-Package: org.eclipse.core.resources,
  tau.smlab.syntech.gameinputtrans.translator,
  tau.smlab.syntech.gamemodel,
  tau.smlab.syntech.games.gr1,
- tau.smlab.syntech.games.gr1.unreal,
  tau.smlab.syntech.jtlv,
  tau.smlab.syntech.jtlv.env.module,
  tau.smlab.syntech.spectragameinput,

@@ -88,7 +88,6 @@ public class WellSeparationMenu extends SyntechAction<WellSeparationActionID> {
 
 	@Override
 	public void run(WellSeparationActionID actionID, IFile specFile) {
-		// TODO Auto-generated method stub
 		GameInput gi = null;
 
 		BDDPackage.setCurrPackage(PreferencePage.getBDDPackageSelection(),
@@ -178,25 +177,46 @@ public class WellSeparationMenu extends SyntechAction<WellSeparationActionID> {
 			break;
 
 		case COMPUTE_CORE:
-
-			List<BehaviorInfo> behaviorInfo = new ArrayList<BehaviorInfo>();
+			res = new ArrayList<String>();
+			Systems systems;
 			try {
 				if (tau.smlab.syntech.games.gr1.wellseparation.ui.preferences.PreferencePage.getWellSepIncludeSys()) {
 					consolePrinter.println(
 							"Computing non-well-separated core when considering system guarantees (see Preferences).");
-					behaviorInfo = c.computeCore(model, Systems.SPEC);
+					systems = Systems.SPEC;
 				} else {
 					consolePrinter.println(
 							"Computing non-well-separated core when ignoring all system guarantees (see Preferences).");
-					behaviorInfo = c.computeCore(model, Systems.NONE);
+					systems = Systems.NONE;
 				}
+				res = c.diagnose(model, systems);
 			} catch (Exception e) {
 				e.printStackTrace();
+				break;
+			}
+
+			if (res.isEmpty()) {
+				consolePrinter.println("No core computed because the environment specification is well-separated.");
+				break;
+			}
+
+			Positions positions;
+			if (res.get(0).contains(Positions.ALL.toString())) {
+				positions = Positions.ALL;
+			} else {
+				positions = Positions.REACH;
+			}
+
+			List<BehaviorInfo> behaviorInfo;
+
+			try {
+				behaviorInfo = c.computeCore(model, systems, positions);
+			} catch (Exception e) {
+				e.printStackTrace();
+				break;
 			}
 
 			if (!behaviorInfo.isEmpty()) {
-				// this.isWellSeparated = false;
-				// this.coreSize = res.size();
 				consolePrinter.println("Computed non-well-separated core with " + behaviorInfo.size()
 						+ " elements. See markers in specification file.");
 
@@ -211,9 +231,7 @@ public class WellSeparationMenu extends SyntechAction<WellSeparationActionID> {
 					}
 				});
 			} else {
-				// this.isWellSeparated = true;
-				// this.coreSize = 0;
-				consolePrinter.println("No core computed because the environment specification is well-separated.");
+				consolePrinter.println("There seems to be a bug in the core computation. Please contact us at ....");
 			}
 
 			clearMarkers(specFile);
@@ -227,11 +245,11 @@ public class WellSeparationMenu extends SyntechAction<WellSeparationActionID> {
 			try {
 				if (tau.smlab.syntech.games.gr1.wellseparation.ui.preferences.PreferencePage.getWellSepIncludeSys()) {
 					consolePrinter.println(
-							"Computing non-well-separated counterstrategy when considering system guarantees (see Preferences).");
+							"Computing non-well-separated strategy when considering system guarantees (see Preferences).");
 					memory = c.computeNonWellSepGame(model, Systems.SPEC);
 				} else {
 					consolePrinter.println(
-							"Computing non-well-separated counterstrategy when ignoring all system guarantees (see Preferences).");
+							"Computing non-well-separated strategy when ignoring all system guarantees (see Preferences).");
 					memory = c.computeNonWellSepGame(model, Systems.NONE);
 				}
 			} catch (Exception e) {

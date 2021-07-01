@@ -26,35 +26,24 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 */
 
-package tau.smlab.syntech.richcontrollerwalker;
+package tau.smlab.syntech.richcontrollerwalker.options;
 
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
-import tau.smlab.syntech.gameinput.model.Constraint;
-import tau.smlab.syntech.gameinput.model.GameInput;
-import tau.smlab.syntech.gameinputtrans.translator.Translator;
 
-public class ExpressionTranslator implements Translator {
-
+public class Inclusions implements IInclusions {
+	private final List<IInclusion> inclusions = new ArrayList<>();
+	
 	@Override
-	public void translate(GameInput input) {
-		List<Constraint> sysConstraints = input.getSys().getConstraints();
-		Iterator<Constraint> sysConstraintsItr = sysConstraints.iterator();
-
-		// Remove Guarantees
-		while (sysConstraintsItr.hasNext()) {
-			// Remove non-breakpoint guarantees
-			String garName = sysConstraintsItr.next().getName();
-			if ((garName != null) && garName.startsWith(ControllerConstants.EXP_VALIDATOR_PREFIX)) {
-				continue;
-			}
-			sysConstraintsItr.remove();
-		}
-
-		input.getSys().setConstraints(sysConstraints);
-
-		// Remove Assumptions
-		input.getEnv().getConstraints().clear();
+	public Collection<IInclusion> getCollection() {
+		return inclusions;
 	}
+	
+	@Override
+	public IInclusion getInclusion(int inclusionId) {
+		return inclusions.get(inclusionId);
+	}
+
 }

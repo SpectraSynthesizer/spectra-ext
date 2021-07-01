@@ -29,9 +29,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package tau.smlab.syntech.richcontrollerwalker.ui.preferences;
 
 public class PreferenceConstants {
-
-	public static final String WALKING_DEPTH = "walkingDepth";
-	/** 
+	/**
 	 * number of alternatives to show for taking a step
 	 */
 	public static final String ALTERNATIVE_STEP_COUNT = "alternativeCount";

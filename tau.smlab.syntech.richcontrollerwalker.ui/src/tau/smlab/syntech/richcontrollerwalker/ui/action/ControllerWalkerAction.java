@@ -29,35 +29,42 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package tau.smlab.syntech.richcontrollerwalker.ui.action;
 
 import static tau.smlab.syntech.richcontrollerwalker.ui.Activator.PLUGIN_NAME;
+
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
+import java.nio.file.Paths;
 import java.util.List;
+
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.runtime.Platform;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
-import tau.smlab.syntech.jtlv.BDDPackage;
-import tau.smlab.syntech.jtlv.BDDPackage.BBDPackageVersion;
-import tau.smlab.syntech.richcontrollerwalker.ControllerConstants;
+import org.eclipse.swt.events.MouseAdapter;
+import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.widgets.FileDialog;
+import org.eclipse.swt.widgets.MessageBox;
+
 import tau.smlab.syntech.richcontrollerwalker.SymbolicWalker;
-import tau.smlab.syntech.richcontrollerwalker.SymbolicWalker.UserModule;
+import tau.smlab.syntech.richcontrollerwalker.bdds.BddUtil;
+import tau.smlab.syntech.richcontrollerwalker.filters.FilterSummary;
+import tau.smlab.syntech.richcontrollerwalker.filters.FilterType;
+import tau.smlab.syntech.richcontrollerwalker.options.DisplayedOptions;
+import tau.smlab.syntech.richcontrollerwalker.options.IOptionsReply;
+import tau.smlab.syntech.richcontrollerwalker.ui.dialogs.VarsDialog;
 import tau.smlab.syntech.richcontrollerwalker.ui.dialogs.WalkDialog;
 import tau.smlab.syntech.richcontrollerwalker.ui.preferences.PreferencePage;
+import tau.smlab.syntech.richcontrollerwalker.util.IBreakpoint;
+import tau.smlab.syntech.richcontrollerwalker.util.Mode;
+import tau.smlab.syntech.richcontrollerwalker.util.Mod;
+import tau.smlab.syntech.richcontrollerwalker.util.Modules;
+import tau.smlab.syntech.richcontrollerwalker.util.OptionsType;
+import tau.smlab.syntech.richcontrollerwalker.util.Preferences;
 import tau.smlab.syntech.ui.console.ConsolePrinter;
 import tau.smlab.syntech.ui.extension.SyntechAction;
 
 public class ControllerWalkerAction extends SyntechAction<ControllerWalkerActionsID> {
-
-	private static final int STATE_IDX = 0;
-	private static final int DEFAULT_IDX = 0;
-	private ConsolePrinter consolePrinter;
-	private boolean isBothPlayers = false;
-	public WalkDialog walkDialog;
-	public SymbolicWalker symbolicWalker;
-
+	// dialog;
 	@Override
 	public String getPluginName() {
 		return PLUGIN_NAME;
@@ -69,666 +76,539 @@ public class ControllerWalkerAction extends SyntechAction<ControllerWalkerAction
 	}
 
 	@Override
-	public void run(ControllerWalkerActionsID action, IFile specFile) {
-		// Called once upon start.
-		int walkingDepth = PreferencePage.getWalkingDepth();
-		boolean isLogActive = PreferencePage.getIsLogActive();
-
-		int alternativeStepCount = PreferencePage.getAlternativeStepCount();
-		BDDPackage bddPackage = tau.smlab.syntech.ui.preferences.PreferencePage.getBDDPackageSelection();
-		BBDPackageVersion bddPackageVersion = tau.smlab.syntech.ui.preferences.PreferencePage
-				.getBDDPackageVersionSelection();
-
-		try {
-			consolePrinter = new ConsolePrinter(PLUGIN_NAME, ConsolePrinter.CLEAR_CONSOLE);
-		} catch (Exception e) {
-			e.printStackTrace();
-			return;
-		}
-
-		boolean[] userPlayers = getSymbolicWalkingUserPlayers(action);
-		boolean playEnv = userPlayers[0];
-		boolean playSys = userPlayers[1];
+	public void run(ControllerWalkerActionsID modulesPlayedByUser, IFile specFile) { // Called once upon start.
 		// create a new Symbolic Rich Controller Walker instance
-		symbolicWalker = createNewSymbolicWalker(walkingDepth, alternativeStepCount, bddPackage, bddPackageVersion,
-				playEnv, playSys, isLogActive);
+		SymbolicWalker sw = createNewSymbolicWalker(PreferencePage.getPreferences(),
+				modulesPlayedByUser.toUserModule());
 
-		if (symbolicWalker == null) {
-			return;
-		}
-
-		// do depth ENV-SYS consecutive steps, (MAYBE followed by a single ENV step)
-		try {
-			symbolicWalker.doDepthSteps();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-		if (symbolicWalker.isEnvDeadLock()) {
+		if (sw.isDeadlock()) {
 			MessageDialog.openInformation(shell, PLUGIN_NAME,
-					"Environment deadlock has been reached after performing the initial steps shown in the console");
+					"Environment deadlock has been reached in the initial state.");
+			sw.close();
 			return;
 		}
 
-		walkDialog = new WalkDialog(shell, "Rich Controller Walker", symbolicWalker.computeCurrentPlayerSteps(),
-				symbolicWalker.getPrints()) {
+		WalkDialog dialog = new WalkDialog(shell, "Rich Controller Walker") {
+			private String loadedLogFile;
+			private final DDFilterHelper ddFltrHelper = new DDFilterHelper();
+			protected final IMask mask = new Mask();
+			DisplayedOptions dispOpts;
+
+			@Override
+			protected void buttonPressed(final int buttonId) {
+				switch (buttonId) {
+				case IDialogConstants.OK_ID:
+					okPressed();
+					break;
+				case IDialogConstants.CANCEL_ID:
+					cancelPressed();
+					break;
+				case IDialogConstants.OPEN_ID:
+					openLogPressed();
+					break;
+				case IDialogConstants.BACK_ID:
+					backPressed();
+					break;
+				case IDialogConstants.FINISH_ID:
+					resetSteps();
+					break;
+				case IDialogConstants.SKIP_ID:
+					skipToEnd();
+					break;
+				case IDialogConstants.STOP_ID:
+					skipToStart();
+					break;
+				}
+			}
+
+			private void processAndUpdateOptions(IOptionsReply reply) {
+				processReply(reply);
+				updateOptions(reply.strList());
+			}
+
+			private void processReply(IOptionsReply reply) {
+				dispOpts = null;
+				Mode mode = sw.getMode();
+				if (mode.isFree() && !reply.isEmpty()) {
+					dispOpts = (DisplayedOptions) reply;
+				}
+			}
+
+			private void updateOptions(List<String> opts) {
+				updatePossibleStepsList(opts);
+				updatePossibleStepsListView();
+				selectStepAtIndex(possibleStepsList.size() > 0 ? 0 : -1);
+			}
+
+			private void updateUI() {
+				Mode mode = sw.getMode();
+
+				FilterSummary ddf_summary = sw.getFilterSummary(FilterType.DROPDOWN);
+				ddFilterLabel.setText(ddf_summary.getExpression());
+				FilterSummary tf_summary = sw.getFilterSummary(FilterType.TEXT);
+				filterText.setText(tf_summary.getExpression());
+				updateModeLabel();
+				setPossibleStepsTitle();
+				loadMoreStepsBtn.setEnabled(hasMoreOptions());
+				stepBackButton.setEnabled(sw.canStepBack());
+				getButton(IDialogConstants.SKIP_ID).setEnabled(mode.isGuided() && !sw.isRouteEnd());
+				getButton(IDialogConstants.STOP_ID).setEnabled(mode.isGuided() && !sw.isRouteStart());
+				nextButton.setEnabled(!sw.isDeadlock() && selectedOptionIndex >= 0); // Todo: recheck
+				genLogBtn.setSelection(sw.isGeneratingLog());
+				genLoglabel.setText(sw.isGeneratingLog() ? "Writing log to: " + sw.getLogFileName() : "");
+				genLoglabel.getParent().layout();
+				updateRemoveAllBpsBtn();
+				if (!sw.getMode().isFree()) {
+					reachabilityBtn.setEnabled(false);
+					setLoadLogBtnText(sw.getMode().isReach() ? "Exit reachability" : "Exit log");
+					stepBackButton.setText("Previous State");
+					nextButton.setText("Next State");
+				} else {
+					setLoadLogBtnText("Load Log");
+					stepBackButton.setText("Step Back");
+					nextButton.setText("Next Step");
+				}
+				updateConsoleArea();
+			}
+
+			private boolean hasMoreOptions() {
+				return sw.getMode().isFree() && dispOpts != null && dispOpts.hasMoreOptions();
+			}
+
+			private void loadMoreOptions() {
+				updateOptions(dispOpts.nextStrList());
+				updateUI();
+			}
+
+			private void setPossibleStepsTitle() {
+				Mode mode = sw.getMode();
+				Mod turn = sw.getTurn();
+				if (mode.isFree()) {
+					stepsGrp.setText("Next possible steps for " + turn);
+				} else {
+					stepsGrp.setText("Next Guided State");
+				}
+			}
+
+			private void updateModeLabel() {
+				Mode mode = sw.getMode();
+				String modeLabelText = "MODE: " + mode;
+				switch (mode) {
+				case FREE:
+					modeLabelText += "\nUser plays: " + sw.getUser() + ".";
+					break;
+				case LOG:
+					modeLabelText += "\nWalking on log file: " + loadedLogFile + ".";
+				case REACH:
+					modeLabelText += "\nNumber of states remaining on guided route: " + sw.numRemainingRouteStates()
+							+ " out of " + sw.numRouteStates() + ".";
+					break;
+				default:
+					throw new IllegalArgumentException("Unexpected value: " + mode);
+				}
+				modeLabel.setText(modeLabelText);
+				modeLabel.getParent().layout();
+			}
+
+			private void setLoadLogBtnText(String text) {
+				loadLogBtn.setText(text);
+				loadLogBtn.update();
+			}
+
+			private void updateConsoleArea() {
+				// TODO: does this line do anything?
+				consoleTableViewer.getTable().setTopIndex(consoleTableViewer.getTable().getItemCount() - 1);
+				consoleTableViewer.refresh();
+			}
 
 			@Override
 			protected void okPressed() {
-				super.okPressed();
-
-				doNextStep();
-
-				// Enable/disable load more steps button.
-				loadMoreSteps.setEnabled(symbolicWalker.hasMoreSteps());
-
-				// Update watches and breakpoints before next step.
-				updateWatches();
-
-				// update breakpoints
-				updateBreakpoints();
-			}
-
-			private void doNextStep() {
-				String selectedStep = getSelectedStep();
-				int selectedStepIdx = (selectedStep != null) ? this.getSelectedStepIndex() : -1;
-
-				if (selectedStep != null) {
-					// perform the selected ENV or SYS step
-					if (!symbolicWalker.doChosenEnvStep(selectedStepIdx)) {
-						symbolicWalker.doChosenSysStep(selectedStepIdx);
-					}
+				if (possibleStepsSWT.getSelection().length > 0) {
+					selectedOptionIndex = possibleStepsSWT.getSelectionIndex(); // TODO: is this still necessary?
 				}
-
-				if (!(symbolicWalker.isFollowingLog() || symbolicWalker.isFollowingReachability())) {
-					// do depth ENV-SYS consecutive steps, MAYBE followed by a single ENV step
-					try {
-						symbolicWalker.doDepthSteps();
-					} catch (IOException | NullPointerException e) {
-						// e.printStackTrace();
-					}
-				}
-
-				// accumulate all prints of the steps performed so far which are shown in the
-				// dialog
-				symbolicWalker.donePrintingToConsole(); // Do after depth steps (if there were any).
-				List<String> newContent = symbolicWalker.getPrints();
-				this.appendToConsoleArea(newContent);
-
-				// clear the prints which have been generated by the recent steps
-				symbolicWalker.clearPrints();
-
-				if (!symbolicWalker.isFollowingLog() && !symbolicWalker.isFollowingReachability()) {
-					// show the new possible SYS or ENV steps in the user dialog
-					List<String> currentPlayerSteps = symbolicWalker.computeCurrentPlayerSteps();
-					this.updatePossibleStepsList(currentPlayerSteps);
-					this.updatePossibleStepsListView(this.possibleStepsList, true);
-					updateNextStepLabelText();
-					handleEnvDeadlock(symbolicWalker);
-					super.selectStepAtIndex(DEFAULT_IDX);
-
-				} else { // log and/or reachability state
-					String curState = symbolicWalker.getCurrentState();
-					if (curState != null) {
-						List<String> currentPlayerStates = new ArrayList<>();
-						currentPlayerStates.add(curState);
-						this.updatePossibleStepsListView(currentPlayerStates, true);
-						super.selectStepAtIndex(STATE_IDX);
-						// markChosenStep();
-
-					} else {
-						if (!symbolicWalker.isFollowingLog()) {
-							exitLog();
-							setFollowingLog(null);
-						} else if (!symbolicWalker.isFollowingReachability()) {
-							exitReachability();
-						}
-					}
-				}
-
-				this.setBackButtonEnable(symbolicWalker.canStepBack());
-			}
-
-			/**
-			 * Test
-			 */
-			protected void backPressed() { // Step back
-				super.backPressed();
-
-				// Prompt creation of new log
-				if (symbolicWalker.isGeneratingLog()) {
-
-					if (stepBackLogGenerationDialog() == SWT.CANCEL) {
-						// On cancel
-						return;
-					}
-				}
-
-				int res = symbolicWalker.stepBack();
-				if (res < 0)
-					return;
-
-				// Update generated log label after generating new file
-				updateGenLogLabel();
-
-				// Remove the last print from console.
-				this.removeCharsFromConsole(res);
-
-				// clear the prints which have been generated by the recent steps
-				symbolicWalker.clearPrints();
-
-				if (!(symbolicWalker.isFollowingLog() || symbolicWalker.isFollowingReachability())) {
-					// Normal step back
-					// show the new possible SYS or ENV steps in the user dialog
-					// Note that the false parameter in computeCurrentPlayerSteps avoids updating
-					// currentState.
-					List<String> currentPlayerSteps = symbolicWalker.computeCurrentPlayerSteps(false);
-					this.updatePossibleStepsList(currentPlayerSteps);
-					this.updatePossibleStepsListView(currentPlayerSteps, true);
-					handleEnvDeadlock(symbolicWalker);
-					super.selectStepAtIndex(Math.max(0, symbolicWalker.lastStepIndex));
+				IOptionsReply reply = null;
+				if (sw.getMode().isGuided()) {
+					reply = sw.doNextStep(-1);
 				} else {
-					// * Step back on log mode *
-					String curState = symbolicWalker.getCurrentState();
-					List<String> currentPlayerStates = new ArrayList<>();
-					currentPlayerStates.add(curState);
-					this.updatePossibleStepsListView(currentPlayerStates, true);
-					handleEnvDeadlock(symbolicWalker);
-					super.selectStepAtIndex(STATE_IDX);
-				}
-				this.setBackButtonEnable(symbolicWalker.canStepBack());
-
-				// Update breakpoints and watches
-				updateWatches();
-				updateBreakpoints();
-
-			}
-
-			@Override
-			protected void resetSteps() {
-				super.resetSteps();
-
-				// Enable step back button.
-				stepBackButton.setEnabled(false);
-
-				// if log is being generated - warn user that reseting will erase log
-				if (symbolicWalker.isGeneratingLog()) {
-					int res = resetDialog();
-					if (res == SWT.CANCEL) {
-						return;
+					int id = dispOpts.getOptId(selectedOptionIndex);
+					if (dispOpts.getType() == OptionsType.INCLUSIONS) {
+						reply = sw.selectInclusion(id);
+					} else {
+						reply = sw.doNextStep(id);
 					}
 				}
-
-				// reset symbolic walker
-				symbolicWalker.reset();
-
-				// Jump to the first step. Update next steps.
-				List<String> currentPlayerSteps = symbolicWalker.computeCurrentPlayerSteps();
-				this.updatePossibleStepsList(currentPlayerSteps);
-				this.updatePossibleStepsListView(currentPlayerSteps, true);
-				this.setBackButtonEnable(false);
-
-				// Refresh watches
-				updateWatches();
-
-				// Refresh breakpoints
+				processAndUpdateOptions(reply);
+				updateUI();
 				updateBreakpoints();
+				checkAndHandleDeadlock();
+				updateConsoleArea();
+			}
 
-				// Clear console messages.
-				super.clearConsole();
+			protected void backPressed() { // Step back
+				// clear the prints which have been generated by the recent steps
+				processAndUpdateOptions(sw.stepBack());
+				updateUI();
+				updateBreakpoints();
+			}
 
-				// Set log mode off.
-				setFollowingLog(null);
-
-				// Reset reachability
-				exitReachability();
-
-				// update GUI labels
-				exitLogOrReachabilityState();
+			protected void resetSteps() {
+				// if log is being generated - warn user that reseting will erase log
+				if (sw.isGeneratingLog() && popupDialog("Reset Walk",
+						"Resetting walk will clear the currently generated log.") == SWT.CANCEL) {
+					return;
+				}
+				processAndUpdateOptions(sw.reset());
+				updateUI();
+				updateBreakpoints();
 			}
 
 			@Override
 			protected void cancelPressed() {
-				super.cancelPressed();
-//				MessageDialog.openInformation(shell, PLUGIN_NAME,
-//						"Walker dialog closed. See steps history in the console");
-				symbolicWalker.clear();
+				sw.close();
+				setReturnCode(CANCEL);
+				close();
 			}
 
-			protected String getGenLogPath() {
-				return symbolicWalker.getLogFileName();
-			}
-
-			protected void changeLogState() {
-				try {
-					if (symbolicWalker.isGeneratingLog()) {
-						if (isBothPlayers && symbolicWalker.getPlayingModule() == UserModule.SYS) {
-							if (exitLogDialog() == SWT.CANCEL) {
-								// On cancel
-								genLogBtn.setSelection(true);
-								return;
-							}
-						}
-						symbolicWalker.changeLogState();
-						resetGenLogLabel();
-					} else {
-						symbolicWalker.changeLogState();
-						updateGenLogLabel();
-						this.getDialogArea().redraw();
+			// Browse Dialog
+			protected void openLogPressed() {
+				if (!sw.getMode().isFree()) {
+					processAndUpdateOptions(sw.exitRoute());
+					updateUI();
+					updateBreakpoints();
+					checkAndHandleDeadlock();
+					updateConsoleArea();
+				} else {
+					FileDialog dlg = new FileDialog(getShell());
+					dlg.setFilterPath(sw.getWorkingDir());
+					dlg.setText("File Dialog");
+					String dir = dlg.open(); // get the direction
+					if (dir != null) {
+						loadedLogFile = Paths.get(dir).getFileName().toString();
+						loadLog(dir);
 					}
-				} catch (IOException e) {
-					// Auto-generated catch block
-					e.printStackTrace();
 				}
 			}
 
-			private void goToCurrentLogState() {
-				if (!symbolicWalker.isFollowingLog())
-					return;
-				String curState = symbolicWalker.getCurrentState();
-				List<String> currentPlayerStates = new ArrayList<>();
-				currentPlayerStates.add(curState);
-				this.updatePossibleStepsListView(currentPlayerStates, true);
-				super.selectStepAtIndex(STATE_IDX);
-				updateWatches();
+			private boolean loadLog(String path) {
+				// Prompt creation of new log
+				if (sw.isGeneratingLog() && popupDialog("Generate New Log",
+						"Loading log will result in creation of new log.") == SWT.CANCEL) {
+					return false;
+				}
+				final IOptionsReply reply = sw.startLogWalk(path);
+				if (reply.isEmpty()) {
+					MessageDialog.openInformation(shell, PLUGIN_NAME,
+							"Failed to load specified log. Please try a different file.");
+					return false;
+				}
+				processAndUpdateOptions(reply);
+				updateUI();
+				updateBreakpoints();
+				updateConsoleArea();
+				return true;
+			}
+
+			protected void skipToStart() {
+				while (!sw.isRouteStart()) {
+					backPressed();
+				}
+			}
+
+			protected void skipToEnd() {
+				while (!sw.isRouteEnd()) {
+					okPressed();
+				}
+			}
+
+			private boolean checkReachability(int bpId) {
+				return sw.isReachable(bpId);
+			}
+
+			private void startReachability(int bpId) {
+				processAndUpdateOptions(sw.startReachability(bpId));
+				updateUI();
+				updateConsoleArea();
+			}
+
+			private void removeBreakpoint(int bpId) {
+				sw.removeBreakpoint(bpId);
+				postBpRemoval();
+			}
+
+			private void updateBreakpoints() {
+				sw.updateBreakpoints();
+				updateRemoveAllBpsBtn();
+				bpTableViewer.refresh();
+			}
+
+			private boolean checkAndHandleDeadlock() {
+				if (sw.isDeadlock()) {
+					MessageDialog.openInformation(shell, PLUGIN_NAME,
+							"Environment deadlock has been reached. See steps history in the console");
+					return true;
+				}
+				return false;
+			}
+
+			private void postBpRemoval() {
+				removeBpBtn.setEnabled(false);
+				reachabilityBtn.setEnabled(false);
+				lastSelectedBpIndex = -1;
 				updateBreakpoints();
 			}
 
 			@Override
-			protected boolean isFollowingLog() {
-				return symbolicWalker.isFollowingLog();
+			protected void replaceBreakpoint(int bpId, String newExpression) {
+				sw.replaceBreakpoint(bpId, newExpression);
+				updateBreakpoints();
 			}
-
-			private void setFollowingLog(String logFilename) {
-				super.setFollowingLogLocal(logFilename);
-
-				// Enable the jump buttons iff following a log.
-				getButton(IDialogConstants.SKIP_ID).setEnabled(symbolicWalker.isFollowingLog());
-				getButton(IDialogConstants.STOP_ID).setEnabled(symbolicWalker.isFollowingLog());
-			}
-
-			@Override
-			protected boolean loadLog(String path) {
-				super.loadLog(path);
-
-				// Prompt creation of new log
-				if (symbolicWalker.isGeneratingLog()) {
-
-					if (loadLogGenerationDialog() == SWT.CANCEL) {
-						// On cancel
-						return false;
+			
+			protected void updatePossibleStepsListView() {
+				possibleStepsSWT.removeAll();
+				if (possibleStepsList != null) {
+					for (String option : possibleStepsList) {
+						possibleStepsSWT.add(mask.transform(option));
 					}
 				}
+			}
 
-				// Generate BDDs from log file.
-				if (symbolicWalker.loadLog(path)) {
-					exitReachability();
-					enterLogOrReachabilityState();
+			@Override
+			protected void connectToBackend() {
+				loadMoreStepsBtn.addSelectionListener(new SelectionAdapter() {
+					@Override
+					public void widgetSelected(SelectionEvent e) {
+						loadMoreOptions();
+					}
+				});
 
-					// Clear console messages.
-					super.clearConsole();
+				genLogBtn.addSelectionListener(new SelectionAdapter() {
+					@Override
+					public void widgetSelected(SelectionEvent e) {
+						if (sw.isGeneratingLog() && sw.isUserBoth() && sw.getTurn().isSys() && popupDialog(
+								"Exit Log State",
+								"Disabling log generation before SYS completed a step may result in loss of current state.") == SWT.CANCEL) {
+							return;
+						}
+						sw.toggleLog();
+						updateUI();
+						getDialogArea().redraw();
+					}
+				});
 
-					String logFilename = path.substring(path.lastIndexOf('\\') + 1);
-					setFollowingLog(logFilename);
+				for (String domainVal : BddUtil.getAllVarsMap().keySet()) {
+					ddVars.add(domainVal);
+				}
+				ddVars.setEnabled(true);
 
-					// mark step
-					String curState = symbolicWalker.getCurrentState();
-					List<String> currentPlayerStates = new ArrayList<>();
-					currentPlayerStates.add(curState);
-					this.updatePossibleStepsListView(currentPlayerStates, true);
-					this.setBackButtonEnable(false);
-					super.selectStepAtIndex(STATE_IDX);
+				addFltrBtn.addSelectionListener(new SelectionAdapter() {
+					@Override
+					public void widgetSelected(SelectionEvent e) {
+						if (!ddVars.isTextValid() || !ddVals.isTextValid()) {
+							return;
+						}
+						String newExp = ddFltrHelper.add(ddFilterLabel.getText(), ddVars.getText(), ddVals.getText());
 
-					// Update watches and breakpoints
-					updateWatches();
-					updateBreakpoints();
-
-					// Update generated log label after generating new file
-					if (symbolicWalker.isGeneratingLog()) {
-						updateGenLogLabel();
+						handleFilterActionReply(sw.addFilter(newExp, FilterType.DROPDOWN));
 					}
 
-					return true;
-				} else {
-					MessageDialog.openInformation(shell, PLUGIN_NAME,
-							"Failed to load specified log. Please try a different file.");
-				}
-				return false;
-			}
+				});
 
-			@Override
-			protected void exitLog() {
-				symbolicWalker.exitLogMode();
-				super.exitLog();
-				setFollowingLog(null);
-				super.exitReachability();
-				super.setFollowingReachabilityLocal();
-				// recalculate steps
-				List<String> currentPlayerSteps = symbolicWalker.computeCurrentPlayerSteps();
-				this.updatePossibleStepsList(currentPlayerSteps);
-				this.updatePossibleStepsListView(this.possibleStepsList, true);
-				updateNextStepLabelText();
-				super.selectStepAtIndex(DEFAULT_IDX);
-
-			}
-
-			@Override
-			protected void skipToStart() {
-				if (!symbolicWalker.isFollowingLog())
-					return;
-
-				// Prompt creation of new log
-				if (symbolicWalker.isGeneratingLog()) {
-					if (stepBackLogGenerationDialog() == SWT.CANCEL) {
-						// On cancel
-						return;
-					}
-				}
-
-				symbolicWalker.jumpToStart();
-
-				// Update generated log label after generating new file
-				updateGenLogLabel();
-
-				// Clear console messages.
-				super.clearConsole();
-
-				// Disable back button.
-				this.setBackButtonEnable(false);
-
-				// Go to the chosen state in the log (according to logIndex).
-				goToCurrentLogState();
-			}
-
-			@Override
-			protected void skipToEnd() {
-				if (symbolicWalker.isFollowingLog() || symbolicWalker.isFollowingReachability()) {
-					// Step until end of walk.
-					while (!(symbolicWalker.isEndOfReachability() || symbolicWalker.isEndOfLog())) {
-						doNextStep();
+				removeFlterBtn.addSelectionListener(new SelectionAdapter() {
+					@Override
+					public void widgetSelected(SelectionEvent e) {
+						String newExp = ddFltrHelper.remove(ddFilterLabel.getText(), ddVars.getText());
+						if (newExp.isBlank()) {
+							handleFilterActionReply(sw.removeFilter(FilterType.DROPDOWN));
+						} else {
+							handleFilterActionReply(sw.addFilter(newExp, FilterType.DROPDOWN));
+						}
 					}
 
-					// Update watches and breakpoints before next step.
-					updateWatches();
-					updateBreakpoints();
-				}
-			}
+				});
 
-			@Override
-			protected boolean isLogOrReachabilityActive() {
-				return symbolicWalker.isFollowingLog() || symbolicWalker.isFollowingReachability();
-			}
-
-			@Override
-			protected void stopPlayingReachability() {
-				symbolicWalker.exitReachabilityMode();
-			}
-
-			@Override
-			protected void exitReachability() {
-				super.exitReachability();
-				super.setFollowingReachabilityLocal();
-				// Disable indicators and update relevant labels.
-				if (!symbolicWalker.isFollowingLog()) {
-					// recalculate states
-					super.exitLog();
-					setFollowingLog(null);
-					List<String> currentPlayerSteps = symbolicWalker.computeCurrentPlayerSteps();
-					this.updatePossibleStepsList(currentPlayerSteps);
-					this.updatePossibleStepsListView(this.possibleStepsList, true);
-					updateNextStepLabelText();
-					exitLogOrReachabilityState();
-					super.selectStepAtIndex(DEFAULT_IDX);
-
-				}
-			}
-
-			@Override
-			protected boolean checkReachability(int bpIndex) {
-				return symbolicWalker.checkReachability(bpIndex);
-			}
-
-			@Override
-			protected boolean isReachability() {
-				return symbolicWalker.isFollowingReachability();
-			}
-
-			@Override
-			protected void startReachability() {
-				// update GUI labels
-				enterLogOrReachabilityState();
-
-				symbolicWalker.playReachability();
-				super.setFollowingReachabilityLocal();
-				getButton(IDialogConstants.SKIP_ID).setEnabled(true);
-
-				String curState = symbolicWalker.getCurrentState();
-				List<String> currentPlayerStates = new ArrayList<>();
-				currentPlayerStates.add(curState);
-				this.updatePossibleStepsListView(currentPlayerStates, true);
-				super.selectStepAtIndex(STATE_IDX);
-
-			}
-
-			@Override
-			protected boolean addWatch(int idx, String formula) {
-				return symbolicWalker.addWatch(idx, formula);
-			}
-
-			@Override
-			protected boolean removeWatch(int idx) {
-				return symbolicWalker.removeWatch(idx);
-			}
-
-			@Override
-			protected String getWatchEval(int idx) {
-				if (symbolicWalker.getWatchValue(idx))
-					return "True";
-				return "False";
-			}
-
-			private void updateWatches() {
-				for (int i = 0; i < watchModel.size(); i++) {
-					if (!watchModel.get(i).enabled)
-						continue;
-					String value = getWatchEval(watchModel.get(i).id);
-					// Do not update when value is null.
-
-					if (value != null) {
-						if (value.equals(watchModel.get(i).val))
-							watchModel.get(i).markForChange = false;
-						else
-							watchModel.get(i).markForChange = true;
-						watchModel.get(i).val = value;
+				clearFltrBtn.addSelectionListener(new SelectionAdapter() {
+					@Override
+					public void widgetSelected(SelectionEvent e) {
+						handleFilterActionReply(sw.removeFilter(FilterType.DROPDOWN));
 					}
-				}
-				watchTableViewer.refresh();
-			}
+				});
 
-			@Override
-			protected ArrayList<Watch> loadWatches() {
-				ArrayList<Watch> watches = new ArrayList<>();
-				HashMap<Integer, String> persistWatchDict = symbolicWalker.loadWatchExpressionsProperties();
-				// List<String> strList = symbolicWalker.loadWatches();
-
-				if (!persistWatchDict.keySet().isEmpty())
-					watchCounter = Collections.max(persistWatchDict.keySet()) + 1;
-
-				for (int idx : persistWatchDict.keySet()) {
-
-					Watch watch = new Watch(idx, persistWatchDict.get(idx));
-					if (addWatch(watch.id, watch.eq)) {
-						watch.enabled = true;
-						watch.val = getWatchEval(watch.id);
-					} else {
-						watch.enabled = false;
-						watch.val = "N/A";
+				textFilterBtn.addSelectionListener(new SelectionAdapter() {
+					@Override
+					public void widgetSelected(SelectionEvent e) {
+						String fExp = filterText.getText();
+						IOptionsReply reply;
+						if (fExp.isBlank()) {
+							reply = sw.removeFilter(FilterType.TEXT);
+						} else {
+							reply = sw.addFilter(fExp, FilterType.TEXT);
+						}
+						if (sw.getMode().isFree()) {
+							processAndUpdateOptions(reply);
+						}
+						updateUI();
 					}
-					watches.add(watch);
-				}
-				return watches;
-			}
+				});
 
-			@Override
-			protected boolean addBreakpoint(int idx, String formula) {
-				return symbolicWalker.addBreakpoint(idx, formula);
-			}
+				filterText.setText(sw.getFilterSummary(FilterType.TEXT).getExpression());
 
-			protected boolean isBreakpointRemoved(int bpindex) {
-				return symbolicWalker.removeBreakpoint(bpindex);
-			}
+				consoleTableViewer.setInput(sw.getStepsSoFar());
 
-			protected void enableBreakpoint(int bpID) {
-				symbolicWalker.enableBreakPoint(bpID);
-			}
+				bpList = sw.getBreakpointsList();
+				bpTableViewer.setInput(bpList);
 
-			protected void disableBreakpoint(int bpID) {
-				symbolicWalker.disableBreakPoint(bpID);
-			}
-
-			@Override
-			protected boolean getBreakpointValue(Breakpoint bp) {
-				return symbolicWalker.isBreakPointStop(bp.id);
-			}
-
-			private void updateBreakpoints() {
-				// update breakpoints
-				for (int i = 0; i < breakpointModel.size(); i++) {
-					if (breakpointModel.get(i).enabled) {
-						updateBreakpoint(i, symbolicWalker.isBreakPointStop(i));
+				// update last selected breakpoint field
+				bpTableViewer.getTable().addMouseListener(new MouseAdapter() {
+					@Override
+					public void mouseDown(MouseEvent e) {
+						int y = bpTableViewer.getTable().getHeaderHeight();
+						for (int i = 0; i < bpTableViewer.getTable().getItemCount(); i++) {
+							y += bpTableViewer.getTable().getItemHeight();
+							if (e.y <= y) {
+								lastSelectedBpIndex = i;
+								removeBpBtn.setEnabled(true);
+								if (sw.getMode().isFree() && bpList.get(lastSelectedBpIndex).eval().isValid()) {
+									reachabilityBtn.setEnabled(true);
+								}
+								break;
+							}
+						}
 					}
-				}
-				breakpointTableViewer.refresh();
-			}
+				});
 
-			protected void updateBreakpoint(int idx, boolean reached) {
-				if (idx >= 0 && idx < breakpointModel.size())
-					breakpointModel.get(idx).reached = reached;
-			}
+				addBpBtn.addSelectionListener(new SelectionAdapter() {
 
-			@Override
-			protected ArrayList<Breakpoint> loadBreakpoints() {
-				ArrayList<Breakpoint> bps = new ArrayList<>();
-				HashMap<Integer, String> persistBPDict = symbolicWalker.loadBreakpointExpressionsProperties();
-				// List<String> strList = symbolicWalker.loadWatches();
-
-				if (!persistBPDict.keySet().isEmpty())
-					bpCounter = Collections.max(persistBPDict.keySet()) + 1;
-
-				for (int idx : persistBPDict.keySet()) {
-					Breakpoint bp = new Breakpoint(idx, persistBPDict.get(idx));
-
-					if (addBreakpoint(bp.id, bp.eq)) {
-						bp.valid = true;
-						bp.reached = getBreakpointValue(bp);
-					} else {
-						bp.valid = false;
-						bp.reached = false;
+					@Override
+					public void widgetSelected(SelectionEvent e) {
+						// Add breakpoint button has been pressed.
+						sw.addNewBreakpoint();
+						updateBreakpoints();
 					}
-					bp.enabled = false;
-					bps.add(bp);
+				});
+
+				removeBpBtn.addSelectionListener(new SelectionAdapter() {
+					@Override
+					public void widgetSelected(SelectionEvent e) {
+						if (lastSelectedBpIndex >= 0 && lastSelectedBpIndex < bpList.size()) {
+							removeBreakpoint(bpList.get(lastSelectedBpIndex).getId());
+						}
+					}
+				});
+
+				removeAllBpsBtn.addSelectionListener(new SelectionAdapter() {
+					@Override
+					public void widgetSelected(SelectionEvent e) {
+						if (popupDialog("Remove All Breakpoints",
+								"All breakpoints will be removed and can only be restored manually.") == SWT.CANCEL) {
+							return;
+						}
+						sw.removeAllBreakpoints();
+						postBpRemoval();
+					}
+				});
+
+				varsBtn.addSelectionListener(new SelectionAdapter() {
+					@Override
+					public void widgetSelected(SelectionEvent e) {
+						DisplayedOptions DO = sw.getMode().isFree() ? dispOpts : null;
+						VarsDialog vd = new VarsDialog(shell, mask, DO ,sw.getTurn(), sw.getMode().isFree());
+						vd.open();
+						updatePossibleStepsListView();
+					}
+				});
+				
+				reachabilityBtn.addSelectionListener(new SelectionAdapter() {
+					@Override
+					public void widgetSelected(SelectionEvent e) {
+						IBreakpoint bp = bpList.get(lastSelectedBpIndex);
+						if (bp.eval().isTrue()) {
+							MessageBox dialog = new MessageBox(shell, SWT.OK);
+							dialog.setText("Reachability Status");
+							dialog.setMessage("Breakpoint is already reached.");
+							dialog.open();
+							return;
+						}
+						if (!checkReachability(bp.getId())) {
+							MessageBox dialog = new MessageBox(shell, SWT.OK);
+							dialog.setText("Reachability Status");
+							dialog.setMessage("Could not reach from current state.");
+							dialog.open();
+							return;
+						}
+
+						MessageBox dialog = new MessageBox(shell, SWT.ICON_QUESTION | SWT.OK | SWT.CANCEL);
+						dialog.setText("Reachability Status");
+						dialog.setMessage("Successfully reached breakpoint state.\nEnter reachability mode?");
+						if (dialog.open() == SWT.CANCEL) {
+							return; // Cancelled by user.
+						}
+						bpTableViewer.refresh();
+						startReachability(bp.getId());
+					}
+		
+					
+				});
+
+				processAndUpdateOptions(sw.getDisplayOptions());
+				updateUI();
+				updateBreakpoints();
+			}
+
+			private void handleFilterActionReply(IOptionsReply reply) {
+				if (sw.getMode().isFree()) {
+					processAndUpdateOptions(reply);
 				}
-				return bps;
+				updateUI();
 			}
 
 			@Override
-			protected void guiWasInit() {
-				loadMoreSteps.setEnabled(symbolicWalker.hasMoreSteps());
-
-				// Last thing to check.
-				isUnitTest();
-			}
-
-			@Override
-			protected void pressedOnAButton() {
-				// Display the current turn (ENV or SYS).
-				updateNextStepLabelText();
-				// Enable/disable load more steps button.
-				loadMoreSteps.setEnabled(symbolicWalker.hasMoreSteps());
-			}
-
-			@Override
-			protected boolean isENVTurn() {
-				return symbolicWalker.getPlayingModule() == UserModule.ENV;
-			}
-
-			@Override
-			protected String getWorkingDir() {
-				return symbolicWalker.getWorkingDir();
-			}
-
-			@Override
-			protected void loadMoreSteps() {
-				// show the new possible SYS or ENV steps in the user dialog
-				List<String> currentPlayerSteps = symbolicWalker.getMoreSteps();
-				// if (currentPlayerSteps.size()==0) return;
-				this.updatePossibleStepsList(currentPlayerSteps);
-				this.updatePossibleStepsListView(currentPlayerSteps, true);
-				if (!symbolicWalker.hasMoreSteps()) {
-					loadMoreSteps.setEnabled(false);
+			protected void selectedVariablesCombo() {
+				if (ddVars.getText() != null) {
+					ddVals.removeAll();
+					for (String domainVal : BddUtil.getAllVarsMap().get(ddVars.getText()).domain()) {
+						ddVals.add(domainVal);
+					}
+					ddVals.select(0);
+					ddVals.setEnabled(true);
 				}
 			}
-
-			private boolean handleEnvDeadlock(SymbolicWalker symbolicWalker) {
-				if (symbolicWalker.isEnvDeadLock()) {
-					MessageDialog.openInformation(shell, PLUGIN_NAME,
-							"Environment deadlock has been reached. See steps history in the console");
-					close();
-					return true;
-				}
-				return false;
-			}
-
+			
+			
 		};
-		// clear the prints which have been generated by the first performed steps
-		symbolicWalker.clearPrints();
-		walkDialog.open();
-		consolePrinter.showConsole(activePage);
+		
+
+		
+		dialog.open();
 	}
 
-	private void isUnitTest() {
-		String[] appArgs = Platform.getApplicationArgs();
-		for (int i = 0; i < appArgs.length; i++) {
-			/*
-			 * if (appArgs[i].contains("-unittest")) { Junit.beginTests(this); break; }
-			 */
-		}
+	
+	
+	private int popupDialog(String title, String message) {
+		MessageBox dialog = new MessageBox(shell, SWT.ICON_QUESTION | SWT.OK | SWT.CANCEL | SWT.CENTER);
+		dialog.setText(title);
+		dialog.setMessage(message + " continue anyway?");
+		return dialog.open();
 	}
 
-	private boolean[] getSymbolicWalkingUserPlayers(ControllerWalkerActionsID action) {
-		boolean[] userPlayers = new boolean[2]; // userPlayers[0] -> ENV, userPlayers[1] -> SYS
-		if (ControllerWalkerActionsID.WALK_SYMBOLIC_CONTROLLER_BOTH.equals(action)) {
-			isBothPlayers = true;
-			userPlayers[0] = true;
-			userPlayers[1] = true;
-		} else if (ControllerWalkerActionsID.WALK_SYMBOLIC_CONTROLLER_SYS.equals(action)) {
-			userPlayers[0] = false;
-			userPlayers[1] = true;
-		} else if (ControllerWalkerActionsID.WALK_SYMBOLIC_CONTROLLER_ENV.equals(action)) {
-			userPlayers[0] = true;
-			userPlayers[1] = false;
-		}
-		return userPlayers;
-	}
-
-	private SymbolicWalker createNewSymbolicWalker(int walkingDepth, int alternativeStepCount, BDDPackage bddPackage,
-			BBDPackageVersion bddPackageVersion, boolean playEnv, boolean playSys, boolean isLogActive) {
-
-		SymbolicWalker symbolicWalker = null;
+	private SymbolicWalker createNewSymbolicWalker(Preferences preferences, Modules userModule) {
+		ConsolePrinter consolePrinter;
 		try {
-			symbolicWalker = new SymbolicWalker(consolePrinter.getPrintStream(), walkingDepth, alternativeStepCount,
-					specFile, bddPackage, bddPackageVersion, playEnv, playSys, isLogActive);
-		} catch (Exception e) {
-			if (e.getMessage().equals(ControllerConstants.MISMATCHED_CONTROLLER)) {
-				MessageDialog.openInformation(shell, PLUGIN_NAME,
-						"Mismatched controller. Please synthesize a symbolic controller for this spectra file ("
-								+ specFile.getName() + ").");
-			} else {
-				MessageDialog.openInformation(shell, PLUGIN_NAME, "Controller is missing. FileNotFoundException: "
-						+ e.getMessage() + ". Please synthesize a controller.");
-			}
+			consolePrinter = new ConsolePrinter(PLUGIN_NAME, ConsolePrinter.CLEAR_CONSOLE);
+		} catch (IllegalAccessException | NoSuchFieldException e) {
+			e.printStackTrace();
+			throw new RuntimeException("cannot initialize console printer;");
 		}
-		return symbolicWalker;
+		consolePrinter.showConsole(activePage);
+		try {
+			return new SymbolicWalker(consolePrinter.getPrintStream(), specFile, userModule, preferences);
+		} catch (IOException e) {
+			e.printStackTrace();
+			MessageDialog.openInformation(shell, PLUGIN_NAME,
+					"Mismatched/Missing controller. Please synthesize a symbolic controller for this spectra file ("
+							+ specFile.getName() + ").");
+			throw new IllegalArgumentException(
+					"Mismatched/Missing controller. Please synthesize a symbolic controller for this spectra file ("
+							+ specFile.getName() + ").");
+		}
 	}
-
 }

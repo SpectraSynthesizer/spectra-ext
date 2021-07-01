@@ -28,12 +28,22 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package tau.smlab.syntech.richcontrollerwalker.ui.action;
 
+import tau.smlab.syntech.richcontrollerwalker.util.Modules;
 import tau.smlab.syntech.ui.extension.ActionID;
 
 public enum ControllerWalkerActionsID implements ActionID {
-	WALK_SYMBOLIC_CONTROLLER_SYS("Walk as System Player"), WALK_SYMBOLIC_CONTROLLER_ENV(
-			"Walk as Environment Player"), WALK_SYMBOLIC_CONTROLLER_BOTH(
-					"Walk as Both Players");
+	WALK_SYMBOLIC_CONTROLLER_SYS("Walk as System Player") {@Override
+	Modules toUserModule() {
+		return Modules.SYS;
+	}}, WALK_SYMBOLIC_CONTROLLER_ENV(
+			"Walk as Environment Player") {@Override
+		Modules toUserModule() {
+				return Modules.ENV;
+			}}, WALK_SYMBOLIC_CONTROLLER_BOTH(
+					"Walk as Both Players") {@Override
+				Modules toUserModule() {
+						return Modules.BOTH;
+					}};
 
 	private ControllerWalkerActionsID(String t) {
 		this.menuText = t;
@@ -45,4 +55,6 @@ public enum ControllerWalkerActionsID implements ActionID {
 	public String getMenuText() {
 		return menuText;
 	}
+	
+	abstract Modules toUserModule();
 }

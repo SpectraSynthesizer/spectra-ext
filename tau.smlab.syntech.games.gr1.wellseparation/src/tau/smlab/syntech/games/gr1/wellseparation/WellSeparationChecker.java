@@ -44,7 +44,6 @@ import tau.smlab.syntech.gamemodel.PlayerModule;
 import tau.smlab.syntech.games.AbstractGamesException;
 import tau.smlab.syntech.games.gr1.GR1Game;
 import tau.smlab.syntech.games.gr1.GR1Memory;
-import tau.smlab.syntech.games.gr1.unreal.DdminUnrealizableCore;
 import tau.smlab.syntech.jtlv.CoreUtil;
 import tau.smlab.syntech.jtlv.Env;
 
@@ -68,10 +67,6 @@ public class WellSeparationChecker {
    * a core set of assumptions that make env non-well-separated
    */
   private List<BehaviorInfo> core;
-  /**
-   * a core set of guarantees that make env well-separated
-   */
-  private List<BehaviorInfo> wellSepCoreSys;
 
   public enum Positions {
     /**
@@ -223,62 +218,22 @@ public class WellSeparationChecker {
     }
   }
 
-  /**
-   * Compute a core of system guarantees that make the environment well-separated
-   * 
-   * Precondition: check (*, SPEC) is true
-   * 
-   * WARNING adds justice FALSE to aux BehaviorInfo of model
-   * 
-   * @param cu
-   * @param e
-   * @return
-   * @throws ModuleException
-   * @throws AbstractGamesException
-   */
-  public List<BehaviorInfo> computeSysSPECCore(GameModel model, EnvSpecPart e)
-      throws ModuleException, AbstractGamesException {
-
-    env = model.getEnv();
-    sys = model.getSys();
-
-    restrictEnv(e);
-
-    BehaviorInfo justFalse = new BehaviorInfo();
-    justFalse.justice = Env.FALSE();
-    model.addAuxBehaviorInfo(justFalse);
-
-    ArrayList<BehaviorInfo> gar = new ArrayList<BehaviorInfo>();
-    for (BehaviorInfo bi : model.getSysBehaviorInfo()) {
-      if (!bi.isJustice()) {
-        gar.add(bi);
-      }
-    }
-
-    DdminUnrealizableCore ddmin = new DdminUnrealizableCore(model);
-
-    wellSepCoreSys = ddmin.minimize(gar);
-
-    System.out.println("From " + gar.size() + " to " + wellSepCoreSys.size());
-    for (BehaviorInfo bi : wellSepCoreSys) {
-      System.out.println(bi);
-    }
-
-    return wellSepCoreSys;
-  }
-
   public List<BehaviorInfo> computeCore(GameModel model) throws Exception {
     return computeCore(model, Systems.NONE);
   }
 
-  /**
+  public List<BehaviorInfo> computeCore(GameModel model, Systems s) throws Exception {
+	return computeCore(model, s, Positions.REACH);
+  }
+
+/**
    * computes a core for ENV_JUSTICE, P_REACH, S_NONE
    * 
    * @param cu
    * @return
    * @throws Exception
    */
-  public List<BehaviorInfo> computeCore(GameModel model, Systems s) throws Exception {
+  public List<BehaviorInfo> computeCore(GameModel model, Systems s, Positions p) throws Exception {
 
     env = model.getEnv();
     sys = model.getSys();
@@ -292,7 +247,7 @@ public class WellSeparationChecker {
       }
     }
 
-    DdminNonWellSeparation ddmin = new DdminNonWellSeparation(model, Positions.REACH);
+    DdminNonWellSeparation ddmin = new DdminNonWellSeparation(model, p);
     core = ddmin.minimize(asms);
 
     return core;

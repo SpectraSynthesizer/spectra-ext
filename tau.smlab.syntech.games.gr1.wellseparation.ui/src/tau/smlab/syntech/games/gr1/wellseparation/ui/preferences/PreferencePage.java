@@ -68,8 +68,9 @@ public class PreferencePage extends FieldEditorPreferencePage implements
 	            "Well-Separation Check",
 	            1,
 	            new String[][] {
-	                { "Check well-separation of environment only (very strict)", "NONE" },
-	                { "Check well-separation of environment by including system guarantees", "SYS" } },
+	            	{ "Check well-separation of environment by including system guarantees", "SYS" },
+	            	{ "Check well-separation of environment only (very strict)", "NONE" }
+	                 },
 	            getFieldEditorParent(), true);
 	  
 	  addField(wellSepSys);

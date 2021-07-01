@@ -26,33 +26,37 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 */
 
-package tau.smlab.syntech.richcontrollerwalker;
+package tau.smlab.syntech.richcontrollerwalker.bdds;
 
 import net.sf.javabdd.BDD;
 
-public class BreakPoint {
-	private BDD bdd;
-	private boolean active;
+public abstract class AbstractExpWithId extends AbstractExp implements IExpWithId {
+	private final int id;
 
-	public BreakPoint(BDD bdd) {
-		this.active = true;
-		this.bdd = bdd;
+	public AbstractExpWithId(BDD bdd, String exp, int id) {
+		super(bdd, exp);
+		this.id = id;
 	}
-
-	public boolean isActive() {
-		return active;
-	}
-
-	public BDD getBDD() {
-		return bdd;
-	}
-
-	public void setActive(boolean val) {
-		active = val;
-	}
-
+	
 	@Override
-	public String toString() {
-		return bdd.toString();
+	public int getId() {
+		return id;
+	}
+	
+	@Override
+	public int hashCode() {
+		return getId();
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		IExpWithId other = (IExpWithId) obj;
+		return getId() == other.getId();
 	}
 }

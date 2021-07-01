@@ -48,8 +48,8 @@ import tau.smlab.syntech.repair.RepairCore;
 
 public class BFSModelRepair extends ModelRepair {
 
-	public BFSModelRepair(GameInput gameInput, int alpha, boolean merge, boolean edgeData, boolean cores, boolean repairCore) {
-		super(gameInput, alpha, merge, edgeData, cores, repairCore);
+	public BFSModelRepair(GameInput gameInput, int alpha, boolean merge, boolean edgeData, boolean repairCore) {
+		super(gameInput, alpha, merge, edgeData, repairCore);
 	}
 
 	@Override
@@ -88,13 +88,6 @@ public class BFSModelRepair extends ModelRepair {
 	        			return;
 					
 				} else if (alpha ==-1 || currAdditions.size() < alpha) { //go deeper only for smaller than max depth
-					if (useCores) {
-						rg.free();
-						SupportMethods.computeAndSetGurCore(gm);
-						// module of env might have changed and we recompute the Rabin memory
-						rg = new RabinGame(gm);
-						rg.checkRealizability();
-					}
 					JusticeViolationGraph csg = computeCS(gm, rg);
 					List<BasicAssumption> extraction = assumptionFinderOneLevel(csg);
 					csg.freeJVGraph(csg.getNodes(), csg.getEdges());

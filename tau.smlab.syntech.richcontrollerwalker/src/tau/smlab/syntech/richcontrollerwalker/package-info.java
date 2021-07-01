@@ -31,12 +31,13 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * states of the controller, observe the variables at any given position and jump to breakpoints 
  */
 /**
+ * @author Shay Gershtein
+ * @author Brit Youngmann
  * @author Ido Salomon
  * @Author Nir Zaidman
  * @Author Daniel Kuperman Azoulay
  * @author Sagi Aharoni
  * @author Ilia Shevrin
  * @author Or Pistiner
- *
  */
 package tau.smlab.syntech.richcontrollerwalker;

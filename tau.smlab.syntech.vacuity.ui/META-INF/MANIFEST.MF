@@ -20,6 +20,5 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.xtext,
  tau.smlab.syntech.checks,
  tau.smlab.syntech.bddgenerator
-Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Automatic-Module-Name: tau.smlab.syntech.vacuity.ui
 Bundle-ActivationPolicy: lazy

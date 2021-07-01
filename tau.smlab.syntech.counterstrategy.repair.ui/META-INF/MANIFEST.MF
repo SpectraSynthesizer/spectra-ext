@@ -25,6 +25,6 @@ Import-Package: net.sf.javabdd,
  tau.smlab.syntech.gamemodel,
  tau.smlab.syntech.games.rabin,
  tau.smlab.syntech.spectragameinput
-Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Automatic-Module-Name: tau.smlab.syntech.counterstrategy.repair.ui
 
 

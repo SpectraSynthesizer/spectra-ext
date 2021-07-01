@@ -79,7 +79,7 @@ public class ACCombo extends Combo {
      * @return returns true iff the text value equals one of the values in the items array
      * and the widget is enabled.
      */
-    protected boolean isTextValid() {
+    public boolean isTextValid() {
     	if (!this.getEnabled()) return false;
     	String thisText = this.getText();
     	for (String str : this.getItems()) {

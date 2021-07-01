@@ -37,6 +37,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * @author Sagi Aharoni
  * @author Ilia Shevrin
  * @author Or Pistiner
- *
+ * @author Shay Gershtein
+ * @author Brit Youngmann
  */
 package tau.smlab.syntech.richcontrollerwalker.ui;

@@ -204,8 +204,8 @@ public class VacuityMenu extends SyntechAction<VacuityActionID> {
 				consolePrinter.println(coreStr);
 				consolePrinter.println("");				
 				
-				consolePrinter.println("It means that there are no possible assumptions that would allow the environment to satisfy all assumptions and allow the system to satisfy all guarantees at the same time. ");
-				consolePrinter.println("The specification might be made realizable with assumptions that the environment cannot satisfy. Check also well-separation of the environment!");
+				consolePrinter.println("It means that there are no possible runs that satisfy the environment and system requirements together. ");
+				consolePrinter.println("If the specification is realizable, it may be because of assumptions that the environment cannot satisfy. Check also well-separation of the environment!");
 			}
 			sat.free();
 			break;

@@ -47,11 +47,9 @@ import tau.smlab.syntech.repair.RepairCore;
  */
 
 public class FullApplicationModelRepair extends ModelRepair {
-
-	boolean useDdmax = false;
 	
-	public FullApplicationModelRepair(GameInput gameInput, int alpha, boolean merge, boolean edgeData, boolean cores, boolean repairCore) {
-		super(gameInput, alpha, merge, edgeData, cores, repairCore);
+	public FullApplicationModelRepair(GameInput gameInput, int alpha, boolean merge, boolean edgeData, boolean repairCore) {
+		super(gameInput, alpha, merge, edgeData, repairCore);
 	}
 	
 	@Override
@@ -70,7 +68,6 @@ public class FullApplicationModelRepair extends ModelRepair {
 			// the variable has to be deleted from the Env without resetting the old Env or we would lose all bdds
 			Env.deleteVar(JusticeViolationGraph.ASSUMPTION_RANK); 
 			gm.free();
-			List<BasicAssumption> baseAdditions =  new ArrayList<BasicAssumption>(currAdditions);
 			currAdditions.addAll(extraction);
 			createModelWithAdditions(currAdditions);
 			
@@ -95,31 +92,10 @@ public class FullApplicationModelRepair extends ModelRepair {
 					gm.free();
 				}
 			} else {
-				if (useDdmax) {
-					createModelWithAdditions(currAdditions);
-					DdminSatAssumptions minSat = new DdminSatAssumptions(gm, extraction);
-					List<BasicAssumption> res = new ArrayList<BasicAssumption>(minSat.minimize(extraction));
-					if (res.size()==extraction.size()) { // none of them can be used without being unsat
-						halt = true;
-						rg.free();
-						gm.free();
-					} else {
-						extraction.removeAll(res);
-						currAdditions =  new ArrayList<BasicAssumption>(baseAdditions);
-						currAdditions.addAll(extraction);	
-						computeGameModel();
-						rg = new RabinGame(gm);	
-						rg.checkRealizability(); // required for the JVTS computation				
-					}
-				} else {
-					halt = true;
-					rg.free();
-					gm.free();
-				}
+				halt = true;
+				rg.free();
+				gm.free();
 			}
-			
 		}
-		
 	}
-
 }

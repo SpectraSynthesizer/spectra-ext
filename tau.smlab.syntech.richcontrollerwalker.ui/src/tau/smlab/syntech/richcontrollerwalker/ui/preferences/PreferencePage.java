@@ -35,67 +35,66 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 
 import tau.smlab.syntech.richcontrollerwalker.ui.Activator;
+import tau.smlab.syntech.richcontrollerwalker.util.Preferences;
 
 /**
- * This class represents a preference page that is contributed to the Preferences dialog. By subclassing
- * <samp>FieldEditorPreferencePage</samp>, we can use the field support built into JFace that allows us to create a page
+ * This class represents a preference page that is contributed to the
+ * Preferences dialog. By subclassing <samp>FieldEditorPreferencePage</samp>, we
+ * can use the field support built into JFace that allows us to create a page
  * that is small and knows how to save, restore and apply itself.
  * <p>
- * This page is used to modify preferences only. They are stored in the preference store that belongs to the main
- * plug-in class. That way, preferences can be accessed directly via the preference store.
+ * This page is used to modify preferences only. They are stored in the
+ * preference store that belongs to the main plug-in class. That way,
+ * preferences can be accessed directly via the preference store.
  */
 
-public class PreferencePage extends FieldEditorPreferencePage implements
-    IWorkbenchPreferencePage {
+public class PreferencePage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
 
-  public PreferencePage() {
-    super(GRID);
-    setPreferenceStore(Activator.getDefault().getPreferenceStore());
-    setDescription("Rich Controller Walker preferences::");
-  }
+	public PreferencePage() {
+		super(GRID);
+		setPreferenceStore(Activator.getDefault().getPreferenceStore());
+		setDescription("Rich Controller Walker preferences::");
+	}
 
-  /**
-   * Creates the field editors. Field editors are abstractions of the common GUI blocks needed to manipulate various
-   * types of preferences. Each field editor knows how to save and restore itself.
-   */
+	/**
+	 * Creates the field editors. Field editors are abstractions of the common GUI
+	 * blocks needed to manipulate various types of preferences. Each field editor
+	 * knows how to save and restore itself.
+	 */
 
-  private IntegerFieldEditor walkingDepth;
-  private IntegerFieldEditor alternativeStepCount;
-  private BooleanFieldEditor isLogActive;
+	private IntegerFieldEditor alternativeStepCount;
+	private BooleanFieldEditor isLogActive;
 
-  public void createFieldEditors() {
-    walkingDepth = new IntegerFieldEditor(PreferenceConstants.WALKING_DEPTH,
-        "Walking Depth - The number of steps to walk", getFieldEditorParent());
-    walkingDepth.setValidRange(0, Integer.MAX_VALUE);
-    addField(walkingDepth);
+	public void createFieldEditors() {
+		alternativeStepCount = new IntegerFieldEditor(PreferenceConstants.ALTERNATIVE_STEP_COUNT,
+				"Alternative Step Count - The number of alternatives steps to choose from", getFieldEditorParent());
+		alternativeStepCount.setValidRange(0, Integer.MAX_VALUE);
+		addField(alternativeStepCount);
 
-    alternativeStepCount = new IntegerFieldEditor(PreferenceConstants.ALTERNATIVE_STEP_COUNT,
-        "Alternative Step Count - The number of alternatives steps to choose from", getFieldEditorParent());
-    alternativeStepCount.setValidRange(0, Integer.MAX_VALUE);
-    addField(alternativeStepCount);
+		isLogActive = new BooleanFieldEditor(PreferenceConstants.LOG_ACTIVE_ON_START, "Create log on startup",
+				getFieldEditorParent());
+		addField(isLogActive);
+	}
 
-    isLogActive = new BooleanFieldEditor(PreferenceConstants.LOG_ACTIVE_ON_START, "Create log on startup",
-        getFieldEditorParent());
-    addField(isLogActive);
-  }
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.eclipse.ui.IWorkbenchPreferencePage#init(org.eclipse.ui.IWorkbench)
+	 */
+	public void init(IWorkbench workbench) {
+	}
 
-  /*
-   * (non-Javadoc)
-   * 
-   * @see org.eclipse.ui.IWorkbenchPreferencePage#init(org.eclipse.ui.IWorkbench)
-   */
-  public void init(IWorkbench workbench) {
-  }
+	public static Preferences getPreferences() {
+		return new Preferences(getIsLogActive(), getAlternativeStepCount(),
+				tau.smlab.syntech.ui.preferences.PreferencePage.getBDDPackageSelection(),
+				tau.smlab.syntech.ui.preferences.PreferencePage.getBDDPackageVersionSelection());
+	}
 
-  public static int getWalkingDepth() {
-    return Activator.getDefault().getPreferenceStore().getInt(PreferenceConstants.WALKING_DEPTH);
-  }
+	public static int getAlternativeStepCount() {
+		return Activator.getDefault().getPreferenceStore().getInt(PreferenceConstants.ALTERNATIVE_STEP_COUNT);
+	}
 
-  public static int getAlternativeStepCount() {
-    return Activator.getDefault().getPreferenceStore().getInt(PreferenceConstants.ALTERNATIVE_STEP_COUNT);
-  }
-
-  public static boolean getIsLogActive() {
-    return Activator.getDefault().getPreferenceStore().getBoolean(PreferenceConstants.LOG_ACTIVE_ON_START);
-  }
+	public static boolean getIsLogActive() {
+		return Activator.getDefault().getPreferenceStore().getBoolean(PreferenceConstants.LOG_ACTIVE_ON_START);
+	}
 }

@@ -31,8 +31,8 @@ package tau.smlab.syntech.cores;
 import java.util.ArrayList;
 import java.util.List;
 
+import tau.smlab.syntech.cores.domainagnostic.AbstractDdmin;
 import tau.smlab.syntech.cores.util.Checker;
-import tau.smlab.syntech.games.util.AbstractDdmin;
 
 /**
  * This is a general algorithm for all cores and global cores computation (I named it "PUNCH algorithm")
@@ -48,20 +48,10 @@ import tau.smlab.syntech.games.util.AbstractDdmin;
  *
  * @param <T>
  */
-public abstract class AllCoresPunchAlgorithm<T> extends AllCoresBase<T> {
+public class AllCoresPunchAlgorithm<T> extends AllCoresBase<T> {
 
-	protected Checker<T> checker = null;
-	
 	public AllCoresPunchAlgorithm(Checker<T> c) {
-		checker = c;
-	}
-	
-	public int checks() {
-		return checker.getChecks();
-	}
-	
-	public int actualChecks() {
-		return checker.getActualChecks();
+		super(c);
 	}
 	
 	public void computeAllCores(List<T> superSet) {
@@ -163,16 +153,4 @@ public abstract class AllCoresPunchAlgorithm<T> extends AllCoresBase<T> {
 		set.removeAll(base);
 		return minimizer.minimize(set);
 	}
-	
-	  /**
-	   * Check method for detecting a subset that fulfills the criterion.
-	   * Assumed to be monotonic.
-	   * 
-	   * @param part
-	   * @return
-	   */
-	protected boolean acCheck(List<T> part) {
-		return checker.wrappedCheck(part);
-	}
-
 }

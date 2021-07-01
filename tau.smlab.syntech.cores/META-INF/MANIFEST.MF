@@ -10,9 +10,10 @@ Require-Bundle: tau.smlab.syntech.games.gr1;bundle-version="1.0.0",
  tau.smlab.syntech.gamemodel,
  tau.smlab.syntech.games,
  org.junit.platform.commons,
- org.eclipse.core.runtime;bundle-version="3.13.0"
-Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+ org.eclipse.core.runtime;bundle-version="3.13.0",
+ tau.smlab.syntech.jtlv
 Automatic-Module-Name: tau.smlab.syntech.cores
 Bundle-ActivationPolicy: lazy
 Export-Package: tau.smlab.syntech.cores,
+ tau.smlab.syntech.cores.domainagnostic,
  tau.smlab.syntech.cores.util

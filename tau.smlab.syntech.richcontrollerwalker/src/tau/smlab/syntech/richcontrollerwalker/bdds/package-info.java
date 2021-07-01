@@ -26,12 +26,4 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 */
 
-package tau.smlab.syntech.richcontrollerwalker;
-
-public class ControllerConstants {
-	public static final String MISMATCHED_CONTROLLER = "mismatchedController";
-	public static final String WATCH_NAME_PREFIX = "WATCH";
-	public static final String BREAKPOINT_NAME_PREFIX = "BREAKPOINT";
-	public static final String EXP_VALIDATOR_PREFIX = "EXP";
-	public static final String EXP_PLACEHOLDER = "<replace with expression>";
-}
+package tau.smlab.syntech.richcontrollerwalker.bdds;

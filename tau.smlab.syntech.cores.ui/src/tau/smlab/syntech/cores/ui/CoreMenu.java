@@ -52,8 +52,6 @@ import tau.smlab.syntech.gamemodel.util.EnvTraceInfoBuilder;
 import tau.smlab.syntech.gamemodel.util.SysTraceInfoBuilder;
 import tau.smlab.syntech.gamemodel.util.TraceIdentifier;
 import tau.smlab.syntech.games.gr1.GR1GameExperiments;
-import tau.smlab.syntech.games.gr1.unreal.DdminUnrealizableVarsCore;
-import tau.smlab.syntech.games.util.AbstractDdmin;
 import tau.smlab.syntech.jtlv.BDDPackage;
 import tau.smlab.syntech.jtlv.Env;
 import tau.smlab.syntech.jtlv.env.module.ModuleBDDField;
@@ -65,7 +63,9 @@ import tau.smlab.syntech.ui.extension.SyntechAction;
 import tau.smlab.syntech.ui.jobs.MarkerKind;
 import tau.smlab.syntech.ui.preferences.PreferencePage;
 import tau.smlab.syntech.cores.AllUnrealizebleCores;
+import tau.smlab.syntech.cores.DdminUnrealizableVarsCore;
 import tau.smlab.syntech.cores.QuickCore;
+import tau.smlab.syntech.cores.domainagnostic.AbstractDdmin;
 import tau.smlab.syntech.cores.util.Checker;
 import tau.smlab.syntech.cores.util.RealizabilityCheck;
 import tau.smlab.syntech.cores.util.RealizabilityCheck.GameType;
@@ -75,7 +75,8 @@ import org.eclipse.xtext.nodemodel.util.NodeModelUtils;
 
 
 /**
- *  
+ * This class handles all the core menu options
+ * 
  * @author shalom
  *
  */
@@ -149,12 +150,7 @@ public class CoreMenu extends SyntechAction<CoresActionID> {
 					writeSpecElements(coreGars, MarkerKind.UNREAL_CORE, true);
 					consolePrinter.println("");
 					
-					DdminUnrealizableVarsCore varsMinimizer = new DdminUnrealizableVarsCore(builder.build(coreGars)) {
-						@Override 
-						public boolean realizable(GameModel gm) {
-							return RealizabilityCheck.isRealizable(gm);
-						}
-					};
+					DdminUnrealizableVarsCore varsMinimizer = new DdminUnrealizableVarsCore(builder.build(coreGars));
 					List<ModuleBDDField> coreVars = varsMinimizer.minimize(gm.getSys().getNonAuxFields());
 		  	  		if (!coreVars.isEmpty()) {
 		  	  			consolePrinter.println("Found " + coreVars.size() + " unrealizable core system variables.");
@@ -327,7 +323,7 @@ public class CoreMenu extends SyntechAction<CoresActionID> {
 	private void writeVars(List<ModuleBDDField> elems) {
 		try {
 			for (ModuleBDDField b : elems) {
-				consolePrinter.println("At line " + TraceIdentifier.getLine(b.getTraceId()) + " variable " + b.toString());
+				consolePrinter.println(TraceIdentifier.getLine(b.getTraceId()) + " variable " + b.toString() + ".");
 			    createMarker(b.getTraceId(), MarkerKind.CUSTOM_TEXT_MARKER.getMessage(), MarkerKind.CUSTOM_TEXT_MARKER);
 			}
 		} catch (Exception e) {

@@ -32,7 +32,7 @@ import tau.smlab.syntech.ui.extension.ActionID;
 
 public enum WellSeparationActionID implements ActionID {
 	COMPUTE_CORE("Compute Non-Well-Separation Core"),
-	COMPUTE_COUNTER_STRATEGY("Compute Non-Well-Separation Counterstrategy"),
+	COMPUTE_COUNTER_STRATEGY("Compute Non-Well-Separation Strategy"),
 	DIAGNOSE("Diagnose Well-Separation of Environment");
 	
 	private String text;

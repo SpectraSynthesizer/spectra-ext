@@ -13,9 +13,10 @@ Require-Bundle: org.eclipse.ui,
  tau.smlab.syntech.games.gr1.wellseparation,
  tau.smlab.syntech.games.gr1,
  tau.smlab.syntech.games.rabin,
- tau.smlab.syntech.checks
-Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+ tau.smlab.syntech.checks,
+ tau.smlab.syntech.cores
 Bundle-ActivationPolicy: lazy
 Export-Package: tau.smlab.syntech.repair,
  tau.smlab.syntech.repair.alur,
  tau.smlab.syntech.repair.chatterjee
+Automatic-Module-Name: tau.smlab.syntech.repair

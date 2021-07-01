@@ -33,14 +33,15 @@ import java.io.PrintStream;
 /**
  * 
  * Abstract class for algorithms that compute and return all cores and a global core
- * It has an abstract check function for the violation, which should be monotonic
- * Has statistics class for the number of all checks of the property, and checks done by the abstract method check (actual).
+ * It has a check performed by a checker for memoization. The check should be monotonic.
+ * The checker has statistics for the number of all checks of the property, and checks actually performed.
  * 
  * @author shalom
  */
 
 import java.util.List;
 
+import tau.smlab.syntech.cores.util.Checker;
 import tau.smlab.syntech.cores.util.CoreData;
 import tau.smlab.syntech.cores.util.CoreOutput;
 
@@ -48,9 +49,11 @@ public abstract class AllCoresBase<T> {
 
 	protected CoreData<T> data = null;
 	protected CoreOutput<T> output = null;
+	protected Checker<T> checker = null;
 	
-	AllCoresBase() {
+	protected AllCoresBase(Checker<T> c) {
 		data = new CoreData<T>();
+		checker = c;
 	}
 	
 	public void setCoreOutput(String specName, PrintStream out) {
@@ -89,15 +92,6 @@ public abstract class AllCoresBase<T> {
 			output.writeEnd();
 		}
 	}	
-	/**
-	 * All Cores (ac) check.
-	 * Abstract check method for detecting a subset that fulfills the criterion.
-	 * Assumed to be monotonic.
-	 * 
-	 * @param part
-	 * @return
-	 */
-	protected abstract boolean acCheck(List<T> part);
 
 	/**
 	 * This abstract method is the one containing the algorithm for all cores
@@ -105,10 +99,25 @@ public abstract class AllCoresBase<T> {
 	 */
 	public abstract void computeAllCores(List<T> superSet);
 	
-	/** Supply information about the number of checks and actual checks perfromed
-	 * 
-	 * @return
+	/** Next two methods supply information about the number of checks and actual checks performed 
 	 */
-	public abstract int checks();
-	public abstract int actualChecks();
+	public int checks() {
+		return checker.getChecks();
+	}
+	
+	public int actualChecks() {
+		return checker.getActualChecks();
+	}
+	
+	/**
+	 * Check method for detecting a subset that fulfills the criterion.
+	 * Check is via the checker and assumed to be monotonic.
+	 * 
+	 * @param part
+	 * @return the check
+	 */
+	protected boolean acCheck(List<T> part) {
+		return checker.wrappedCheck(part);
+	}
+
 }

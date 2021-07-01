@@ -32,8 +32,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import tau.smlab.syntech.cores.domainagnostic.AbstractDdmin;
 import tau.smlab.syntech.gamemodel.BehaviorInfo;
-import tau.smlab.syntech.games.util.AbstractDdmin;
 
 /**
  * This class computes the local minimum of the behaviors needed to imply other behaviors, according to traceId.

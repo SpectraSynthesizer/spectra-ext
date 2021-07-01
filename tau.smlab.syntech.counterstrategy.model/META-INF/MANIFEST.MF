@@ -11,4 +11,4 @@ Require-Bundle: tau.smlab.syntech.jtlv;bundle-version="1.0.0",
  tau.smlab.syntech.gameinput;bundle-version="1.0.0"
 Export-Package: tau.smlab.syntech.counterstrategy.model
 Import-Package: tau.smlab.syntech.games.controller.symbolic
-Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Automatic-Module-Name: tau.smlab.syntech.counterstrategy.model

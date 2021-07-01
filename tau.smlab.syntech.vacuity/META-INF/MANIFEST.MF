@@ -12,8 +12,8 @@ Require-Bundle: org.eclipse.ui,
  tau.smlab.syntech.games,
  org.eclipse.xtext,
  tau.smlab.syntech.spectragameinput,
- tau.smlab.syntech.jtlv
-Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+ tau.smlab.syntech.jtlv,
+ tau.smlab.syntech.cores
 Automatic-Module-Name: tau.smlab.syntech.vacuity
 Bundle-ActivationPolicy: lazy
 Export-Package: tau.smlab.syntech.vacuity
