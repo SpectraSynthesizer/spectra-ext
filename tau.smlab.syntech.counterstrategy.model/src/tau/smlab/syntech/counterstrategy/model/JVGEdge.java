@@ -41,7 +41,7 @@ public class JVGEdge {
 	JVGEdgeType type;
 	int destInd;
 	/**
-	 * @deprecated - used to contain a BDD of the transitions represented by this edge. Instead
+	 * not deprecated - used to contain a BDD of the transitions represented by this edge. Instead
 	 * we compute this on-the-fly using the source and target nodes and their inner transitions.
 	 * Should in the future this will be calculated again, it should be done in 
 	 * JusticeViolationGraph::updateEdgesJVG, where an edge is created.

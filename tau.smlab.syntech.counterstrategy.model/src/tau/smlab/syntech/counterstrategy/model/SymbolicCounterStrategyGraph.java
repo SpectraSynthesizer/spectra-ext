@@ -38,7 +38,6 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
-
 import net.sf.javabdd.BDD;
 import tau.smlab.syntech.counterstrategy.model.JusticeViolationGraph.AssumptionSatNode;
 import tau.smlab.syntech.counterstrategy.model.JusticeViolationGraph.AssumptionSatisfactionGraph;
@@ -246,7 +245,7 @@ public class SymbolicCounterStrategyGraph {
 		if (inv.size() > 2 && inv.get(2).equals("aux")) {
 			resInvariant.isDisplayed = false;
 		}
-		
+		resInvariant.bdd = invariant.invariant;
 		log.finer("resInvariant = " + resInvariant.toString());
 		return resInvariant;
 	}
@@ -606,7 +605,7 @@ public class SymbolicCounterStrategyGraph {
 		return res;
 	}
 
-	private BDD getBDDFromCSNode(CounterStrategyGraphStruct.CSNode node) {
+	BDD getBDDFromCSNode(CounterStrategyGraphStruct.CSNode node) {
 		BDD currBDD = Env.TRUE();
 		for (int i = 0; i < node.invariants.size(); i++) {
 			JVGInvariant inv = jvg.convertStringsToInvariant(node.invariants.get(i).var,
@@ -710,6 +709,10 @@ public class SymbolicCounterStrategyGraph {
 		log.info("START");
 		jvg.mergedAttractors();
 		log.info("END");
+	}
+
+	public JusticeViolationGraph getJvg() {
+		return jvg;
 	}
 	
 //	public boolean validate() {

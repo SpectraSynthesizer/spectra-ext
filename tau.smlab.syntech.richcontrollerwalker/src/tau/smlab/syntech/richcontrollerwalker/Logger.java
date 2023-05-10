@@ -192,7 +192,7 @@ final class Logger {
 				one.free();
 				return str;
 			}
-			return state.toStringWithDomains(Env.stringer);
+			return state.toString();
 		}
 
 		private String fullPath() {

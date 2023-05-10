@@ -28,6 +28,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package tau.smlab.syntech.richcontrollerwalker;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Deque;
@@ -65,7 +66,8 @@ abstract class AbstractWalker {
 	private final History history;
 	private final OptionsManager options;
 	private Mode mode;
-
+	
+	
 	AbstractWalker(final PrintStream out, final IFile specFile, final Modules chosenUser, final Preferences preferences)
 			throws IOException {
 		Objects.requireNonNull(preferences).setCurrentBDDPackage();
@@ -76,10 +78,11 @@ abstract class AbstractWalker {
 		Spec spec = new Spec(Objects.requireNonNull(specFile));
 		ExpressionHelper.setSpec(spec);
 		workingDir = spec.getWorkingDir();
-		engine = new Engine(workingDir + "/out/");
+		engine = new Engine(workingDir + File.separator + "out", spec.getModelName(), preferences.useJitController());
 		logger = new Logger(preferences.isLogActive(), spec.getFilePath(), spec.getModelName());
 		breakpoints = new Breakpoints();
 		options = new OptionsManager(preferences.getMaxNumDisplayedSteps());
+		
 	}
 
 	protected void resetFullState() {
@@ -91,15 +94,18 @@ abstract class AbstractWalker {
 	}
 
 	void applyEnvChoice(BDD step) {
-		engine.getFullState().applyEnvChoice(step);
+		BDD succ = engine.getFullState().getSuccessors().and(step);
+		engine.getFullState().getSuccessors().free();
+		engine.getFullState().setSuccessors(succ);
 	}
 
 	void applySysChoice(BDD step) {
-		engine.getFullState().applySysChoice(step);
+		BDD state = engine.getFullState().getSuccessors().and(step);
+		engine.getFullState().freeAndSetNewStep(state);
 	}
 
-	void FreeAndSetFullState(FullState newFullState) {
-		engine.FreeAndSetFullState(newFullState);
+	void freeAndSetFullState(FullState newFullState) {
+		engine.freeAndSetFullState(newFullState);
 	}
 
 	public Mode getMode() {
@@ -154,12 +160,8 @@ abstract class AbstractWalker {
 		engine.getFullState().setState(newCurrentState);
 	}
 
-	protected void freeAndSetCurrentState(BDD newCurrentState) {
-		engine.getFullState().freeAndSetState(newCurrentState);
-	}
-
-	protected void setStateAndUpdateSuccessors(BDD newCurrentState) {
-		engine.getFullState().setStateAndUpdateSuccessors(newCurrentState);
+	protected void setStateAndUpdateSuccessors(BDD newState) {
+		engine.getFullState().freeAndSetNewStep(newState);
 	}
 
 	public boolean isDeadlock() {
@@ -179,9 +181,9 @@ abstract class AbstractWalker {
 	protected List<BDD> computeReachRoute(final int bpId) {
 		return engine.computeReachRoute(getBreakpointBdd(bpId));
 	}
-
-	protected BDD getEngineMove() {
-		return engine.getEngineMove();
+	
+	protected BDD getRandomMove() {
+		return engine.getRandomMove();
 	}
 
 	protected BDD getInitialState() {
@@ -289,7 +291,7 @@ abstract class AbstractWalker {
 		}
 	}
 
-	protected void WriteToLogIfGenerating() {
+	protected void writeToLogIfGenerating() {
 		if (isGeneratingLog()) {
 			writeToLog();
 		}
@@ -365,8 +367,8 @@ abstract class AbstractWalker {
 	protected void printDeadlock() {
 		printing.printDeadLock();
 	}
-
-	protected void printFreeStep(final BDD step) {
+	
+	protected void printFreeStep(BDD step) {
 		printing.printFreeStep(getTurn(), step);
 	}
 

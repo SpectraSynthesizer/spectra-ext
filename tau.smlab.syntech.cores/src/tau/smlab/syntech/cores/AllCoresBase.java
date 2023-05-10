@@ -56,6 +56,10 @@ public abstract class AllCoresBase<T> {
 		checker = c;
 	}
 	
+	public void setCoreOutput(CoreOutput<T> coreOutput) {
+		output = coreOutput;
+	}
+	
 	public void setCoreOutput(String specName, PrintStream out) {
 		output = new CoreOutput<T>(specName, out);
 	}

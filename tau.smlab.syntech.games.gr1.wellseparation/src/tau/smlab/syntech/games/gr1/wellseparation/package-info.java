@@ -31,6 +31,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /**
  * @author Jan Oliver Ringert
+ * @author Ariel Gorenstein
  *
  */
 package tau.smlab.syntech.games.gr1.wellseparation;

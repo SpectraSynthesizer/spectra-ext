@@ -38,104 +38,108 @@ import tau.smlab.syntech.gamemodel.GameModel;
 import tau.smlab.syntech.gamemodel.ModuleException;
 import tau.smlab.syntech.gamemodel.PlayerModule;
 import tau.smlab.syntech.games.gr1.GR1Game;
+import tau.smlab.syntech.games.gr1.GR1GameBuilder;
 import tau.smlab.syntech.games.gr1.wellseparation.WellSeparationChecker.Positions;
 import tau.smlab.syntech.jtlv.Env;
 
 /**
  * minimizes set of assumptions to keep environment non-well-separated
  * 
- * set of assumptions should not include auxiliaries already added on the system side
+ * set of assumptions should not include auxiliaries already added on the system
+ * side
  * 
  * @author ringert
  * 
  */
 public class DdminNonWellSeparation extends AbstractDdmin<BehaviorInfo> {
 
-  private Positions p;
-  private BDD reach;
-  private PlayerModule env;
-  private PlayerModule sys;
-  private GameModel model;
+	private Positions p;
+	private BDD reach;
+	private PlayerModule env;
+	private PlayerModule sys;
+	private GameModel model;
 
-  /**
-   * Computes a minimal core that is non-well-separated
-   * 
-   * Computes a core according to the definition where Postitions REACH is evaluated against reachable states of the
-   * original specification (makes core computation monotonic).
-   * 
-   * @param cu
-   * @param doms
-   * @param p
-   */
-  public DdminNonWellSeparation(GameModel model, Positions p) {
-    this.p = p;
-    this.model = model;
-    env = model.getEnv();
-    sys = model.getSys();
-    if (Positions.REACH.equals(p)) {
-      BDD trans = env.trans().and(sys.trans());
-      BDD ini = env.initial().and(sys.initial());
-      this.reach = Env.allSucc(ini, trans);
-      trans.free();
-    }
-  }
+	/**
+	 * Computes a minimal core that is non-well-separated
+	 * 
+	 * Computes a core according to the definition where Postitions REACH is
+	 * evaluated against reachable states of the original specification (makes core
+	 * computation monotonic).
+	 * 
+	 * @param cu
+	 * @param doms
+	 * @param p
+	 */
+	public DdminNonWellSeparation(GameModel model, Positions p) {
+		this.p = p;
+		this.model = model;
+		env = model.getEnv();
+		sys = model.getSys();
+		if (Positions.REACH.equals(p)) {
+			GR1GameBuilder.stopWhenInitialsLost(false);
+			BDD trans = env.trans().and(sys.trans());
+			BDD ini = env.initial().and(sys.initial());
+			this.reach = Env.allSucc(ini, trans);
+			trans.free();
+		}
+	}
 
-  /**
-   * check for non-well-separation
-   * 
-   * @return true if env is non-well-separated
-   */
-  @Override
-  protected boolean check(List<BehaviorInfo> part) {
-    try {
-      buildEnv(part, env);
-    } catch (ModuleException e) {
-      throw new RuntimeException(e);
-    }
+	/**
+	 * check for non-well-separation
+	 * 
+	 * @return true if env is non-well-separated
+	 */
+	@Override
+	protected boolean check(List<BehaviorInfo> part) {
+		try {
+			buildEnv(part, env);
+		} catch (ModuleException e) {
+			throw new RuntimeException(e);
+		}
 
-    boolean nonWellSeparated = false;
-    GR1Game rg = new GR1Game(model);
-    rg.checkRealizability();
-    
-    if (Positions.ALL.equals(p)) {
-      nonWellSeparated = rg.sysWinAllInitial();
-    } else if (Positions.REACH.equals(p)) {
-      nonWellSeparated = !rg.sysWinningStates().and(reach).isZero();
-    }
+		boolean nonWellSeparated = false;
+		GR1Game rg = GR1GameBuilder.getDefault(model);
+		rg.checkRealizability();
 
-    rg.free();
+		if (Positions.ALL.equals(p)) {
+			nonWellSeparated = rg.sysWinAllInitial();
+		} else if (Positions.REACH.equals(p)) {
+			nonWellSeparated = !rg.sysWinningStates().and(reach).isZero();
+		}
 
-    return nonWellSeparated;
-  }
+		rg.free();
 
-  /**
-   * resets and then adds assumptions to env module
-   * 
-   * @param part
-   * @param env
-   * @throws ModuleException
-   */
-  public void buildEnv(List<BehaviorInfo> part, PlayerModule env) throws ModuleException {
-    env.reset();
+		return nonWellSeparated;
+	}
 
-    ArrayList<BehaviorInfo> asms = new ArrayList<BehaviorInfo>();
-    asms.addAll(part);
+	/**
+	 * resets and then adds assumptions to env module
+	 * 
+	 * @param part
+	 * @param env
+	 * @throws ModuleException
+	 */
+	public void buildEnv(List<BehaviorInfo> part, PlayerModule env) throws ModuleException {
+		env.reset();
 
-    for (BehaviorInfo asm : asms) {
-      if (asm.isInitial()) {
-        env.conjunctInitial(asm.initial.id());
-      }
-      if (asm.isSafety()) {
-        env.conjunctTrans(asm.safety.id());
-      }
-      if (asm.isJustice()) {
-        env.addJustice(asm.justice.id());
-      }
-    }
-    
-    if (env.justiceNum() == 0) {
-      env.addJustice(Env.TRUE());
-    }
-  }
+		ArrayList<BehaviorInfo> asms = new ArrayList<BehaviorInfo>();
+		asms.addAll(part);
+
+		for (BehaviorInfo asm : asms) {
+			if (asm.isInitial()) {
+				env.conjunctInitial(asm.initial.id());
+			}
+			if (asm.isSafety()) {
+				env.conjunctTrans(asm.safety.id());
+			}
+			if (asm.isJustice()) {
+				env.addJustice(asm.justice.id());
+			}
+		}
+
+		if (env.justiceNum() == 0) {
+			env.addJustice(Env.TRUE());
+		}
+	}
 
 }

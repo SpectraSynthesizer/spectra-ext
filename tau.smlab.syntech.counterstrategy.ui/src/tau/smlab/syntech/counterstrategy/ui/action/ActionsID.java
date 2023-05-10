@@ -31,4 +31,5 @@ package tau.smlab.syntech.counterstrategy.ui.action;
 public interface ActionsID {
 	public static final String CONCRETE = "tau.smlab.syntech.counterstrategy.concretecounter";
 	public static final String SYMBOLIC = "tau.smlab.syntech.counterstrategy.symboliccounter";
+	public static final String EXPLANATION = "tau.smlab.syntech.counterstrategy.counterexplanation";
 }

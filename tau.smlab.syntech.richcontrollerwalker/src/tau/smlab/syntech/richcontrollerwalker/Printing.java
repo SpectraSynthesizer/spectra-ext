@@ -33,8 +33,8 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 
 import net.sf.javabdd.BDD;
-import tau.smlab.syntech.richcontrollerwalker.bdds.BddUtil;
 import tau.smlab.syntech.richcontrollerwalker.util.Mode;
+import tau.smlab.syntech.richcontrollerwalker.bdds.BddUtil;
 import tau.smlab.syntech.richcontrollerwalker.util.Mod;
 
 public final class Printing {
@@ -83,8 +83,8 @@ public final class Printing {
 	void printDeadLock() {
 		print(ENV_DEADLOCK_MESSAGE);
 	}
-
-	void printFreeStep(final Mod turn, final BDD step) {
+	
+	void printFreeStep(final Mod turn, BDD step) {
 		print(combineIntoConsoleMessage(turn.toString(), BddUtil.bddToStr(step)));
 	}
 	

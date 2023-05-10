@@ -27,8 +27,9 @@ Import-Package: org.eclipse.core.resources,
  tau.smlab.syntech.jtlv.env.module,
  tau.smlab.syntech.spectragameinput,
  tau.smlab.syntech.spectragameinput.translator,
- tau.smlab.syntech.ui.console,
  tau.smlab.syntech.ui.extension,
+ tau.smlab.syntech.ui.extension.console,
  tau.smlab.syntech.ui.jobs,
+ tau.smlab.syntech.ui.logger,
  tau.smlab.syntech.ui.preferences
 Export-Package: tau.smlab.syntech.cores.ui

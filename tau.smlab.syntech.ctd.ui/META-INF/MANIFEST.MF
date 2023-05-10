@@ -1,0 +1,17 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Ui
+Bundle-SymbolicName: tau.smlab.syntech.ctd.ui;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-Activator: tau.smlab.syntech.ctd.ui.Activator
+Automatic-Module-Name: tau.smlab.syntech.ctd.ui
+Bundle-ActivationPolicy: lazy
+Require-Bundle: org.eclipse.ui,
+ org.eclipse.core.runtime,
+ org.eclipse.ui.console,
+ tau.smlab.syntech.ui.extension,
+ tau.smlab.syntech.ui,
+ tau.smlab.syntech.jtlv,
+ tau.smlab.syntech.ctd,
+ org.eclipse.core.resources,
+ tau.smlab.syntech.regextesting

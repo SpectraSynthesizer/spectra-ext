@@ -68,7 +68,7 @@ public class ImplicationCore extends AbstractDdmin<Integer> {
 		for (Integer i : part) {
 			ofPart.addAll(implying.get(i));
 		}
-		return Vacuity.vacuityImplication(ofPart, implied.get(0));
+		return Vacuity.vacuityImplication(ofPart, implied);
 	}
 
 }

@@ -31,9 +31,13 @@ package tau.smlab.syntech.games.gr1.wellseparation.ui;
 import tau.smlab.syntech.ui.extension.ActionID;
 
 public enum WellSeparationActionID implements ActionID {
+	HEURISTIC_CORE("Fast computation of Non-Well-Separation Core (incomplete)"),
+	HEURISTIC_DIAGNOSE("Fast Well-Separation Diagnosis (incomplete)"),
 	COMPUTE_CORE("Compute Non-Well-Separation Core"),
 	COMPUTE_COUNTER_STRATEGY("Compute Non-Well-Separation Strategy"),
 	DIAGNOSE("Diagnose Well-Separation of Environment");
+	
+	
 	
 	private String text;
 

@@ -58,6 +58,7 @@ import tau.smlab.syntech.games.gr1.wellseparation.WellSeparationChecker;
 import tau.smlab.syntech.games.gr1.wellseparation.WellSeparationChecker.EnvSpecPart;
 import tau.smlab.syntech.games.gr1.wellseparation.WellSeparationChecker.Positions;
 import tau.smlab.syntech.games.gr1.wellseparation.WellSeparationChecker.Systems;
+import tau.smlab.syntech.games.gr1.wellseparation.templates.WellSeparationTemplate;
 import tau.smlab.syntech.jtlv.BDDPackage;
 import tau.smlab.syntech.jtlv.Env;
 import tau.smlab.syntech.spectragameinput.ErrorsInSpectraException;
@@ -66,6 +67,7 @@ import tau.smlab.syntech.spectragameinput.SpectraInputProvider;
 import tau.smlab.syntech.spectragameinput.translator.Tracer;
 import tau.smlab.syntech.ui.extension.SyntechAction;
 import tau.smlab.syntech.ui.jobs.MarkerKind;
+import tau.smlab.syntech.ui.logger.SpectraLogger;
 import tau.smlab.syntech.ui.preferences.PreferencePage;
 
 import org.eclipse.xtext.nodemodel.INode;
@@ -137,7 +139,7 @@ public class WellSeparationMenu extends SyntechAction<WellSeparationActionID> {
 
 			if (res.isEmpty()) {
 				// this.isWellSeparated = true;
-				consolePrinter.println("Environment specification is well-separated.");
+				consolePrinter.printlnAndLog(specFile, actionID.toString(),"Environment specification is well-separated.");
 			} else {
 				// this.isWellSeparated = false;
 				consolePrinter.println("Result: The environment specification is non-well-separated.");
@@ -158,7 +160,7 @@ public class WellSeparationMenu extends SyntechAction<WellSeparationActionID> {
 						} else {
 							message += " from some reachable states.";
 						}
-						consolePrinter.println(message);
+						consolePrinter.printlnAndLog(specFile, actionID.toString(),message);
 					}
 				}
 
@@ -203,8 +205,10 @@ public class WellSeparationMenu extends SyntechAction<WellSeparationActionID> {
 			Positions positions;
 			if (res.get(0).contains(Positions.ALL.toString())) {
 				positions = Positions.ALL;
+				consolePrinter.println("The environment assumptions (in general and in the core) can be violated from all initial states.");
 			} else {
 				positions = Positions.REACH;
+				consolePrinter.println("The environment assumptions (in general and in the core) can be violated from some reachable states.");
 			}
 
 			List<BehaviorInfo> behaviorInfo;
@@ -259,7 +263,7 @@ public class WellSeparationMenu extends SyntechAction<WellSeparationActionID> {
 			if (memory != null) {
 				// this.isWellSeparated = false;
 				consolePrinter.println(
-						"Initial states below are all reachable states from where the system can force the environment to violate at least one assumption.");
+						"Initial states below are all reachable states from where the system can force the environment to violate at least one assumption.\n");
 				ConcreteControllerConstruction cc = new GR1ConceteControllerConstructionSkip(memory, model);
 				IOConsoleOutputStream cout = console.newOutputStream();
 				PrintStream out = new PrintStream(cout);
@@ -284,6 +288,38 @@ public class WellSeparationMenu extends SyntechAction<WellSeparationActionID> {
 			clearMarkers(specFile);
 
 			break;
+			
+		case HEURISTIC_DIAGNOSE:
+			
+			boolean considerGars = tau.smlab.syntech.games.gr1.wellseparation.ui.preferences.PreferencePage.getWellSepIncludeSys();
+			consolePrinter.println(WellSeparationTemplate.diagnose(model, considerGars));
+			
+			break;
+			
+		case HEURISTIC_CORE:
+			
+			considerGars = tau.smlab.syntech.games.gr1.wellseparation.ui.preferences.PreferencePage.getWellSepIncludeSys();
+			behaviorInfo = WellSeparationTemplate.getCore(model, considerGars);
+			
+			if (behaviorInfo != null && !behaviorInfo.isEmpty()) {
+				consolePrinter.println("Computed non-well-separated core with " + behaviorInfo.size()
+						+ " elements. See markers in specification file.");
+
+				PlatformUI.getWorkbench().getDisplay().syncExec(new Runnable() {
+					public void run() {
+						try {
+							PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage()
+									.showView("wellSeparatedCoreMarker");
+						} catch (PartInitException e) {
+							System.err.println("View id not found");
+						}
+					}
+				});
+			} else {
+				consolePrinter.println("Core not found. Consider using the full diagnoser.");
+			}
+			clearMarkers(specFile);
+			createMarker(behaviorInfo, MarkerKind.WELL_SEP_CORE);
 
 		default:
 			break;

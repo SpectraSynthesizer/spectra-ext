@@ -43,8 +43,8 @@ import java.util.List;
 public class CoreOutput<T> {
 
 	private String specName = "";
-	private PrintStream output = null;
 	private long startTime = 0;
+	protected PrintStream output = null;
 	
 	public enum Label {
 		BEGIN, CORE, INTERSECT, END

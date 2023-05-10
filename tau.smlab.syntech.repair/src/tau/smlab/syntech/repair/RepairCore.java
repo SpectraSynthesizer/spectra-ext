@@ -38,7 +38,6 @@ import tau.smlab.syntech.gamemodel.ModuleException;
 import tau.smlab.syntech.gamemodel.PlayerModule;
 import tau.smlab.syntech.games.gr1.GR1Game;
 import tau.smlab.syntech.games.gr1.GR1GameMemoryless;
-import tau.smlab.syntech.repair.BasicAssumption;
 
 /**
  * minimizes set of assumptions that constitute a repair

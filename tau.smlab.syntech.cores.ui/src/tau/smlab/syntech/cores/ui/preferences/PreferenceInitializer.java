@@ -32,7 +32,6 @@ import org.eclipse.core.runtime.preferences.AbstractPreferenceInitializer;
 import org.eclipse.jface.preference.IPreferenceStore;
 
 import tau.smlab.syntech.cores.ui.Activator;
-import tau.smlab.syntech.cores.ui.preferences.PreferenceConstants;
 
 /**
  * Class used to initialize default preference values.

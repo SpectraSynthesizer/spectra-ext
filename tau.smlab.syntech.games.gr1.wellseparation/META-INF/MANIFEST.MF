@@ -8,5 +8,12 @@ Require-Bundle: tau.smlab.syntech.games;bundle-version="1.0.0",
  tau.smlab.syntech.gamemodel;bundle-version="1.0.0",
  tau.smlab.syntech.games.gr1,
  tau.smlab.syntech.cores
-Export-Package: tau.smlab.syntech.games.gr1.wellseparation
+Export-Package: tau.smlab.syntech.games.gr1.wellseparation,
+ tau.smlab.syntech.games.gr1.wellseparation.templates
 Automatic-Module-Name: tau.smlab.syntech.games.gr1.wellseparation
+Import-Package: tau.smlab.syntech.bddgenerator,
+ tau.smlab.syntech.checks,
+ tau.smlab.syntech.gameinput.model,
+ tau.smlab.syntech.gameinput.spec,
+ tau.smlab.syntech.gameinputtrans,
+ tau.smlab.syntech.gameinputtrans.translator

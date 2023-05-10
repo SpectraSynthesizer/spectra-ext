@@ -26,6 +26,12 @@
             name="Well-Separation">
       </page>
 	</extension>
+ <extension
+       point="org.eclipse.core.runtime.preferences">
+    <initializer
+          class="tau.smlab.syntech.games.gr1.wellseparation.ui.preferences.PreferenceInitializer">
+    </initializer>
+ </extension>
 
 </plugin>
 

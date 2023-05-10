@@ -106,6 +106,10 @@ public class JVGNode extends JVGCommonNode {
 	public BDD getTransitions() {
 		return transitions;
 	}
+
+	public int getViolatedJusticeNum() {
+		return violatedJusticeNum;
+	}
 	
 
 }

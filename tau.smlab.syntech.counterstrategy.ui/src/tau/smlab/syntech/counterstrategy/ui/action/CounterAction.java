@@ -30,6 +30,7 @@ package tau.smlab.syntech.counterstrategy.ui.action;
 
 import static tau.smlab.syntech.counterstrategy.ui.Activator.PLUGIN_NAME;
 
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -53,7 +54,6 @@ import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.part.FileEditorInput;
-
 import tau.smlab.syntech.bddgenerator.BDDGenerator;
 import tau.smlab.syntech.bddgenerator.BDDGenerator.TraceInfo;
 import tau.smlab.syntech.checks.Checker;
@@ -73,14 +73,17 @@ import tau.smlab.syntech.spectragameinput.ErrorsInSpectraException;
 import tau.smlab.syntech.spectragameinput.SpectraInputProvider;
 import tau.smlab.syntech.spectragameinput.SpectraTranslationException;
 
+
 public class CounterAction {
 	private IFile specFile;
 	private IWorkbench workbench;
 	private IWorkbenchWindow window;
 	private IWorkbenchPage activePage;
 	private Shell shell;	
-	private SymbolicCounterStrategyGraph graph;
-
+	private SymbolicCounterStrategyGraph graph; 
+	GameModel model;
+	GameInput gi;
+	
 	public void run(String action) {
 	  
 	  if (!setSpecFileAndEnvironmentFields())
@@ -88,16 +91,13 @@ public class CounterAction {
 	    return;
 	  }
 	  
-
 	  new Job("Compute Justice Violation Graph") {
 
       @Override
-      public IStatus run(IProgressMonitor monitor) {
-
-        
-        // computing the graph
+      public IStatus run(IProgressMonitor monitor) { 	
+    	// computing the graph
         try {
-          graph = initGraph(Level.SEVERE);
+          initGraph(Level.SEVERE);
         } catch (Exception e) {
           e.printStackTrace();
           System.out.println(e.getMessage());
@@ -105,7 +105,6 @@ public class CounterAction {
         }
         if (graph == null)
           return Status.CANCEL_STATUS;
-
         
         Display.getDefault().syncExec(new Runnable() {
           
@@ -129,15 +128,15 @@ public class CounterAction {
               System.err.println("Unhandled action id: " + action);
             }    
           }
-        });        
+        });     
         
         return Status.OK_STATUS;
       }
 
     }.schedule();
-	  
+    
 	}
-
+	
 	/**
 	 * @return true if setting succeeded, false otherwise.
 	 */
@@ -195,11 +194,40 @@ public class CounterAction {
 		return true;
 	}
 
-	private SymbolicCounterStrategyGraph initGraph(Level logLevel) throws Exception {
+	/**
+	 * This function initiates the SymbolicCounterStrategyGraph "from scratch" and places it in graph
+	 * @param logLevel - the log level to use in the initiation process
+	 * @throws Exception
+	 */
+	private void initGraph(Level logLevel) throws Exception {
+		initEnv();
+		
+		try {
+			initGameModel();
+		} catch (ErrorsInSpectraException | SpectraTranslationException e) {
+			e.printStackTrace();
+		}
+		
+		graph = initGraphFromModel(logLevel);
+	}
+	
+	/**
+	 * This function sets the BDDPackage and puts the Env into a ready state for computing the graph 
+	 */
+	private void initEnv() {
 		BDDPackage.setCurrPackage(tau.smlab.syntech.ui.preferences.PreferencePage.getBDDPackageSelection(), tau.smlab.syntech.ui.preferences.PreferencePage.getBDDPackageVersionSelection());
 		Env.resetEnv();
 		Env.enableReorder();
-		GameModel model = getGameModel(specFile.getFullPath().toOSString());
+	}
+	
+	/**
+	 * This function computes the SymbolicCounterStrategyGraph based on the GameModel currently in the model parameter and returns it
+	 * @param logLevel - the log level to use in the initiation process
+	 * @return - the computed graph
+	 * @throws Exception
+	 */
+	private SymbolicCounterStrategyGraph initGraphFromModel(Level logLevel) throws Exception {
+
 		RabinGame rg;
 
 		Checker checker = new Checker();
@@ -235,7 +263,27 @@ public class CounterAction {
 		return csg;
 	}
 
-	private GameModel getGameModel(String relativePath) throws ErrorsInSpectraException, SpectraTranslationException {
+	/**
+	 * This function sets the gameInput gi based on the specification path in specFile and generates the gameModel model based on this GameInput.
+	 * @throws ErrorsInSpectraException
+	 * @throws SpectraTranslationException
+	 */
+	private void initGameModel() throws ErrorsInSpectraException, SpectraTranslationException {
+		if (gi == null) {
+			gi = getGameInput(specFile.getFullPath().toOSString());
+		}
+		
+		model = BDDGenerator.generateGameModel(gi, TraceInfo.ALL);
+	}
+	
+	/**
+	 * This function receives a relativePath of a specification, computes a GameInput based on that specification and returns it.
+	 * @param relativePath - the relativePath of the specification
+	 * @return - the computed GameInput 
+	 * @throws ErrorsInSpectraException
+	 * @throws SpectraTranslationException
+	 */
+	private GameInput getGameInput(String relativePath) throws ErrorsInSpectraException, SpectraTranslationException {
 		/*
 		 * SpectraInputProvider sip = new SpectraInputProvider(); GameInput gi =
 		 * sip.getGameInput(fileName);
@@ -246,7 +294,7 @@ public class CounterAction {
 		 * GameInput gi = sip.getGameInput(fileName);
 		 */
 		TranslationProvider.translate(gi);
-		return BDDGenerator.generateGameModel(gi, TraceInfo.ALL);
+		return gi;
 	}
 
 }

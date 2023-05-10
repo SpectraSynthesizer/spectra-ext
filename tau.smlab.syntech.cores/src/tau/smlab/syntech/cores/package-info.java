@@ -27,9 +27,10 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 /**
- * @author Jan Oliver Ringert
+ * 
+ */
+/**
  * @author Rafi Shalom
- * @author Roee Sinai
  *
  */
 package tau.smlab.syntech.cores;

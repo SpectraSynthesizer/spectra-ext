@@ -38,17 +38,20 @@ import net.sf.javabdd.BDD.BDDIterator;
 
 public class AllSteps implements IAllSteps {
 	private BDD successors;
-	private BDD varsByTurn;
 	private final List<IStep> steps = new ArrayList<>();
+	private BDDIterator iterator;
+	private int maxOptionsToLoad;
 
+	public AllSteps(int maxOptionsToLoad) {
+		this.maxOptionsToLoad = maxOptionsToLoad;
+	}
 	
 	@Override
 	public void setNew(BDD successors, BDD varsByTurn) {
 		clear();
 		this.successors = successors.id();
-		this.varsByTurn = varsByTurn;
+		this.iterator = successors.iterator(varsByTurn.toVarSet());
 		steps.clear();
-		loadSteps();
 	}
 
 	@Override
@@ -67,15 +70,17 @@ public class AllSteps implements IAllSteps {
 		return steps;
 	}
 	
-	private void loadSteps() {
-		BDDIterator stepsBddIter = getStepsIterator();
-		for (int i = 0; stepsBddIter.hasNext(); i++) {
-			steps.add(new Step(i, stepsBddIter.next()));
+	public List<IStep> loadSteps() {
+		
+		int i = 0;
+		List<IStep> newSteps = new ArrayList<>();
+		while (iterator.hasNext() && i < maxOptionsToLoad) {
+			newSteps.add(new Step(steps.size() + newSteps.size(), iterator.next()));
+			i++;
 		}
-	}
-	
-	private BDDIterator getStepsIterator() {
-		return successors.iterator(varsByTurn.toVarSet());
+		steps.addAll(newSteps);
+		
+		return newSteps;
 	}
 
 	@Override

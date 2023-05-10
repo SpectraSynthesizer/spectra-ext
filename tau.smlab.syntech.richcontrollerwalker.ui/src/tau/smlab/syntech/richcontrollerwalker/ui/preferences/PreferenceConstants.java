@@ -34,4 +34,7 @@ public class PreferenceConstants {
 	 */
 	public static final String ALTERNATIVE_STEP_COUNT = "alternativeCount";
 	public static final String LOG_ACTIVE_ON_START = "isLogActive";
+	public static final String CONTROLLER_TYPE = "controllerType";
+	public static final String JITS = "JITS";
+	public static final String STATIC = "STATIC";
 }

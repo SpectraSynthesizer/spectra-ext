@@ -36,7 +36,7 @@ public interface IBdd {
 	BDD getBdd();
 
 	default void clear() {
-		BddUtil.freeBdd(getBdd());
+		if (Objects.nonNull(getBdd()) && !getBdd().isFree()) getBdd().free();
 	}
 
 	default boolean isValid() {

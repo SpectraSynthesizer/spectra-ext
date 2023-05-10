@@ -34,57 +34,51 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 
 import tau.smlab.syntech.games.gr1.wellseparation.ui.Activator;
-import tau.smlab.syntech.ui.preferences.PreferenceConstants;
-
 
 /**
- * This class represents a preference page that is contributed to the Preferences dialog. By subclassing
- * <samp>FieldEditorPreferencePage</samp>, we can use the field support built into JFace that allows us to create a page
+ * This class represents a preference page that is contributed to the
+ * Preferences dialog. By subclassing <samp>FieldEditorPreferencePage</samp>, we
+ * can use the field support built into JFace that allows us to create a page
  * that is small and knows how to save, restore and apply itself.
  * <p>
- * This page is used to modify preferences only. They are stored in the preference store that belongs to the main
- * plug-in class. That way, preferences can be accessed directly via the preference store.
+ * This page is used to modify preferences only. They are stored in the
+ * preference store that belongs to the main plug-in class. That way,
+ * preferences can be accessed directly via the preference store.
  */
 
-public class PreferencePage extends FieldEditorPreferencePage implements
-    IWorkbenchPreferencePage {
+public class PreferencePage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
 
-  public PreferencePage() {
-    super(GRID);
-    setPreferenceStore(Activator.getDefault().getPreferenceStore());
-    setDescription("Well-Separation diagnostics preferences:");
-  }
+	public PreferencePage() {
+		super(GRID);
+		setPreferenceStore(Activator.getDefault().getPreferenceStore());
+		setDescription("Well-Separation diagnostics preferences:");
+	}
 
-  /**
-   * Creates the field editors. Field editors are abstractions of the common GUI blocks needed to manipulate various
-   * types of preferences. Each field editor knows how to save and restore itself.
-   */
+	/**
+	 * Creates the field editors. Field editors are abstractions of the common GUI
+	 * blocks needed to manipulate various types of preferences. Each field editor
+	 * knows how to save and restore itself.
+	 */
 
-  private RadioGroupFieldEditor wellSepSys;
+	private RadioGroupFieldEditor wellSepSys;
 
-  public void createFieldEditors() {
-	  wellSepSys = new RadioGroupFieldEditor(
-	            PreferenceConstants.WELL_SEP_SYS,
-	            "Well-Separation Check",
-	            1,
-	            new String[][] {
-	            	{ "Check well-separation of environment by including system guarantees", "SYS" },
-	            	{ "Check well-separation of environment only (very strict)", "NONE" }
-	                 },
-	            getFieldEditorParent(), true);
-	  
-	  addField(wellSepSys);
-  }
+	public void createFieldEditors() {
+		wellSepSys = new RadioGroupFieldEditor(PreferenceConstants.WELL_SEP_SYS, "Well-Separation Check", 1,
+				new String[][] { { "Check well-separation of environment by including system guarantees", PreferenceConstants.SYS },
+						{ "Check well-separation of environment only (very strict)", PreferenceConstants.NONE } },
+				getFieldEditorParent(), true);
 
-  /*
-   * (non-Javadoc)
-   * 
-   * @see org.eclipse.ui.IWorkbenchPreferencePage#init(org.eclipse.ui.IWorkbench)
-   */
-  public void init(IWorkbench workbench) {
-  }
+		addField(wellSepSys);
+	}
 
-  public static boolean getWellSepIncludeSys() {
-	    return "SYS".equals(Activator.getDefault().getPreferenceStore().getString(PreferenceConstants.WELL_SEP_SYS));
-	  }
+
+	public static boolean getWellSepIncludeSys() {
+		return PreferenceConstants.SYS.equals(Activator.getDefault().getPreferenceStore().getString(PreferenceConstants.WELL_SEP_SYS));
+	}
+
+
+	@Override
+	public void init(IWorkbench workbench) {
+		// TODO Auto-generated method stub
+	}
 }

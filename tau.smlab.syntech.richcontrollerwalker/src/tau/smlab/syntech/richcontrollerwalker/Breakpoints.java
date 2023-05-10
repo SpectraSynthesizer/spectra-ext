@@ -184,8 +184,8 @@ class Breakpoints {
 			this.eval = Eval.INVALID;
 		}
 
-		private Breakpoint(int id, String expression, BDD newBdd, Eval newEval) {
-			super(newBdd, expression, id);
+		private Breakpoint(int id, String expression, BDD newState, Eval newEval) {
+			super(newState, expression, id);
 			this.eval = Objects.requireNonNull(newEval);
 		}
 
