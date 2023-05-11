@@ -31,6 +31,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /**
  * @author Rafi Shalom
+ * @author Ariel Gorenstein
  * @author David Trabish
  * @author Elazar Gershuni
  *
