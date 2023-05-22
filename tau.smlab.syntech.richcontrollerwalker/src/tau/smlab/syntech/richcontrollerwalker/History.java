@@ -100,7 +100,7 @@ public final class History {
 			Objects.requireNonNull(fullState);
 			if (Objects.isNull(fullState.getState()) || Objects.isNull(fullState.getSuccessors())
 					|| fullState.getState().isFree() || fullState.getSuccessors().isFree()) {
-				throw new IllegalStateException("cannot save full state with bull or free BDDs");
+				throw new IllegalStateException("cannot save full state with null or free BDDs");
 			}
 			this.fullState = fullState;
 			this.nextTurn = nextTurn;

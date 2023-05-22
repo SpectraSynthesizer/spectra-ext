@@ -31,8 +31,10 @@ package tau.smlab.syntech.vacuity;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import tau.smlab.syntech.gamemodel.BehaviorInfo;
+import tau.smlab.syntech.jtlv.Env;
 
 
 /**
@@ -43,28 +45,39 @@ import tau.smlab.syntech.gamemodel.BehaviorInfo;
 
 public class ImplicationChecks extends Vacuity {
 
-	public Map<Integer, List<Integer>> getEnvMap() {			
-		return computeVacuous(bundle(gm.getEnvBehaviorInfo()), false);
+	public Map<Integer, List<Integer>> getEnvMap() {
+		var bundle = bundle(gm.getEnvBehaviorInfo());
+		return computeVacuous(bundle.keySet(), bundle, false);
 	}
 	
 	public Map<Integer, List<Integer>> getSysMap() {
-		return computeVacuous(bundle(gm.getSysBehaviorInfo()), true);	
+		var bundle = bundle(gm.getSysBehaviorInfo());
+		return computeVacuous(bundle.keySet(), bundle, true);	
 	}
 	
-	protected static Map<Integer, List<Integer>> computeVacuous(Map<Integer, List<BehaviorInfo>> implied, boolean sys) {
+	public static Map<Integer, List<Integer>> computeVacuous(Set<Integer> toCheck, Map<Integer, List<BehaviorInfo>> all, boolean sys) {
 		Map<Integer, List<Integer>> result = new HashMap<Integer, List<Integer>>();
 
+//		The following is a patch for safeties of "alw" to blend in with the usual "G" statements.
+//		These are all unprimed so they are about the current state instead of the next state.
+//		This allows them both to be implied by "G" and to imply "G".		
+//		This is regardless of "alw" handled differently as both their elements in the module should be implied
+//		They are boundled and detected as a vacuity only if both are implied by the combined premise sets.		
+//		make all pairs (representing "alw") safeties unprime so they can imply and be implied by "G" elements
+		all.values().stream().filter( item -> item.size()==2 ). // for all pairs
+					forEach( item -> item.stream().filter( behave -> behave.isSafety()). // for safeties within pairs
+							forEach(behave-> behave.safety = Env.unprime(behave.safety)) ); // unprime
+	 	
 	    long startTime = System.currentTimeMillis();
 		outerloop:
-		for (Integer b : implied.keySet()) {
-			List<BehaviorInfo> itemImplied = implied.get(b);
-			assert(itemImplied.size()==1); // I assume there is only one behavior info with the trace in the implied side
+		for (Integer b : toCheck) {
+			List<BehaviorInfo> itemImplied = all.get(b);
 			
-			List<BehaviorInfo> withoutImplied = sys ? getSysPremiseSet(itemImplied.get(0)) : getEnvPremiseSet(itemImplied.get(0));
+			List<BehaviorInfo> withoutImplied = sys ? getSysPremiseSet(itemImplied) : getEnvPremiseSet(itemImplied);
 			withoutImplied.removeAll(itemImplied);
 			
-			if (vacuityImplication(withoutImplied, itemImplied.get(0))) {
-				result.put(b, coreOfBehavior(withoutImplied, implied.get(b)));
+			if (vacuityImplication(withoutImplied, itemImplied)) {
+				result.put(b, coreOfBehavior(withoutImplied, all.get(b)));
 				if (result.size()==1) {
 					timeToFirst = System.currentTimeMillis() - startTime;
 				}

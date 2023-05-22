@@ -56,8 +56,12 @@ public class SymbolicWalker extends AbstractWalker {
 		requireFreeMode();
 		if (!isDeadlock()) {
 			if (isUserOnlySys()) {
-				applyStep(getEngineMove());
+				BDD step = getRandomMove();
+				printFreeStep(step);
+				applyEnvChoice(step);
 				flushPrints();
+				toggleTurn();
+				step.free();
 			}
 			prepareNewOptions();
 		}
@@ -107,7 +111,7 @@ public class SymbolicWalker extends AbstractWalker {
 		setMode(Mode.LOG);
 		loadedRoute.add(0, getInitialState());
 		setRoute(loadedRoute);
-		freeAndSetCurrentState(routeStartState());
+		setStateAndUpdateSuccessors(routeStartState());
 		createNewLogIfGenerating();
 		printModeTransition(Mode.FREE, Mode.LOG);
 		flushPrints();
@@ -130,7 +134,7 @@ public class SymbolicWalker extends AbstractWalker {
 		setRoute(loadedRoute);
 		saveFullState();
 		resetFullState();
-		freeAndSetCurrentState(routeStartState());
+		setStateAndUpdateSuccessors(routeStartState());
 		printModeTransition(Mode.FREE, Mode.REACH);
 		flushPrints();
 		return isRouteEnd() ? IOptionsReply.emptyOptions() : IOptionsReply.RouteOption(getNextRouteState());
@@ -163,7 +167,11 @@ public class SymbolicWalker extends AbstractWalker {
 			return IOptionsReply.emptyOptions();
 		}
 		if (isUserOnlySys()) {
-			applyStep(getEngineMove());
+			BDD step = getRandomMove();
+			printFreeStep(step);
+			applyEnvChoice(step);
+			toggleTurn();
+			step.free();
 		}
 		flushPrints();
 		return prepareAndGetSteps();
@@ -180,7 +188,7 @@ public class SymbolicWalker extends AbstractWalker {
 		}
 		setCurrentState(advanceRoute());
 		printGuidedState(getCurrentState());
-		WriteToLogIfGenerating();
+		writeToLogIfGenerating();
 		flushPrints();
 		if (isRouteEnd()) {
 			return IOptionsReply.emptyOptions();
@@ -206,26 +214,29 @@ public class SymbolicWalker extends AbstractWalker {
 			throw new IllegalStateException("user cannot move when it is the engine's turn.");
 		}
 		saveFullState();
-		applyStep(getChosenStep(stepId));
+
+		handleStep(getChosenStep(stepId));
+		
 		if (!isDeadlock() && !isUserBoth()) {
-			applyStep(getEngineMove());
+			handleStep(getRandomMove());
 		}
 		flushPrints();
 		return isDeadlock() ? IOptionsReply.emptyOptions() : prepareAndGetSteps();
 	}
-
-	private void applyStep(final BDD step) {
+	
+	private void handleStep(BDD step) {
 		printFreeStep(step);
 		if (getTurn().isEnv()) {
 			applyEnvChoice(step);
 		} else {
 			applySysChoice(step);
-			WriteToLogIfGenerating();
+			writeToLogIfGenerating();
 			if (isDeadlock()) {
 				printDeadlock();
 			}
 		}
 		toggleTurn();
+		step.free();
 	}
 
 	private IOptionsReply prepareAndGetSteps() {
@@ -252,7 +263,7 @@ public class SymbolicWalker extends AbstractWalker {
 
 	private IOptionsReply stepBackFromFreeToFree() {
 		History.FreeItem freeItem = (History.FreeItem) popHistory();
-		FreeAndSetFullState(freeItem.getFullState());
+		freeAndSetFullState(freeItem.getFullState());
 		if (isGeneratingLog() && !(isUserBoth() && getTurn().isSys())) {
 			deleteLastLoggedState();
 		}
@@ -266,7 +277,7 @@ public class SymbolicWalker extends AbstractWalker {
 		final History.RouteItem routeItem = (RouteItem) popHistory();
 		setMode(routeItem.getMode());
 		setRoute(routeItem.getRoute());
-		freeAndSetCurrentState(routeLastState());
+		setStateAndUpdateSuccessors(routeLastState());
 		return IOptionsReply.emptyOptions();
 	}
 
@@ -286,7 +297,7 @@ public class SymbolicWalker extends AbstractWalker {
 		resetRoute(true);
 		resetMode();
 		History.FreeItem freeItem = (History.FreeItem) popHistory();
-		FreeAndSetFullState(freeItem.getFullState());
+		freeAndSetFullState(freeItem.getFullState());
 		setTurn(freeItem.getTurn());
 
 		return prepareAndGetSteps();

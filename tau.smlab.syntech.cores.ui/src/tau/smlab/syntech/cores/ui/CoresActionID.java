@@ -32,6 +32,7 @@ import tau.smlab.syntech.ui.extension.ActionID;
 
 public enum CoresActionID implements ActionID {
 
+	ALL_ASM_CORE("Find All Assumptions Cores"),
 	ASM_CORE("Find an Assumptions Core"),
 	MAX_REAL("Find Maximal Realizable Guarantees"),
 	SYS_VAR_CORE("Find a System Variables Unrealizable Core"),

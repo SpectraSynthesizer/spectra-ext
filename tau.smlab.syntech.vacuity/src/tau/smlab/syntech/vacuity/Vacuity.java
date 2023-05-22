@@ -32,9 +32,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import net.sf.javabdd.BDD;
 import net.sf.javabdd.BDDDomain;
+import net.sf.javabdd.BDDVarSet;
 import tau.smlab.syntech.bddgenerator.BDDGenerator;
 import tau.smlab.syntech.checks.BDDBuilder;
 import tau.smlab.syntech.checks.GR1Implication;
@@ -51,23 +53,45 @@ import tau.smlab.syntech.jtlv.Env;
 
 public class Vacuity {
 	public static BehaviorInfo bot = null; 
-	protected static GameModel gm = null;
+	public static GameModel gm = null;
 	private static boolean core;
 	protected static boolean first;
 	protected static long timeToAll;
 	protected static long timeToFirst;
 	
+	//private static boolean useCReduction = true;
+	private static VacuityComputation computationType;
+	
+	public enum VacuityComputation {JAVA_IMPLEMENTATION, C_IMPLEMENTATION, C_REDUCTION}
+	
 	public Vacuity() {
 	}
 
-	public void init(GameInput gi, VacuityType t, boolean withCore, boolean toFirst) {
+	public void init(GameInput gi, VacuityType t, boolean withCore, VacuityComputation computation, boolean toFirst) {
+		//useCReduction = cReduction;
+		computationType = computation;
 		core = withCore;
 		first = toFirst;
 		gm = BDDGenerator.generateGameModel(gi, t.getTraceInfo());
-		// no need for player modules
-		gm.getSys().free(); 
-		gm.getEnv().free();
 		bot = new BehaviorInfo(Env.FALSE(), null, null, null, null, -1, false);
+		if (computationType == VacuityComputation.C_REDUCTION) {
+			GR1Implication.createCReductionGameModel(gm);
+		}
+		// no need for player modules
+		gm.getSys().reset(); 
+		gm.getEnv().reset();
+	}
+
+	public void init(GameModel gm, boolean withCore, VacuityComputation computation, boolean toFirst) {
+		Vacuity.gm = gm;
+		//useCReduction = cReduction;
+		computationType = computation;
+		core = withCore;
+		first = toFirst;
+		bot = new BehaviorInfo(Env.FALSE(), null, null, null, null, -1, false);
+		if (computationType == VacuityComputation.C_REDUCTION) {
+			GR1Implication.createCReductionGameModel(gm);
+		}
 	}
 	
 	public void free() {
@@ -75,6 +99,9 @@ public class Vacuity {
 		gm = null;
 		bot.free();
 		bot = null;
+		if (computationType == VacuityComputation.C_REDUCTION) {
+			GR1Implication.freeCReductionGameModel();
+		}
 	}
 	
 	public static GameModel getModel() {
@@ -89,7 +116,7 @@ public class Vacuity {
 
 	protected static List<Integer> coreOfBehavior(List<BehaviorInfo> rel, List<BehaviorInfo> b) {
 		List<Integer> impCore = null;
-		if (core && !isTrivial(gm, b.get(0))) {
+		if (core && !isTrivial(gm, b)) {
 			Map<Integer, List<BehaviorInfo>> bundled = bundle(rel);
 			ImplicationCore coreFinder = new ImplicationCore(bundled, b);
 			impCore = coreFinder.minimize(new ArrayList<Integer>(bundled.keySet()));
@@ -111,6 +138,7 @@ public class Vacuity {
 			List<BehaviorInfo> currList = bun.get(t);
 			currList.add(b);
 		}
+
 		return bun;
 	}
 	
@@ -126,6 +154,21 @@ public class Vacuity {
 		return inAux;
 	}
 	
+	/**
+	 * A list is implied if all are implied 
+	 * 
+	 * @param implying
+	 * @param allImplied
+	 * @return
+	 */
+	protected static boolean vacuityImplication(List<BehaviorInfo> implying, List<BehaviorInfo> allImplied) {
+		for (BehaviorInfo implied : allImplied) {
+			if (!vacuityImplication(implying, implied)) {
+				return false;
+			}
+		}
+		return true;
+	}
 	/**
 	 * The implication is dependent on behaviors. Only justices are full GR(1) implication from all elements
 	 * The rest are propositional implication from their type
@@ -147,6 +190,13 @@ public class Vacuity {
 			safe.impWith(implied.safety.id());
 			result = safe.isOne();
 			safe.free();
+		} else if (computationType == VacuityComputation.C_IMPLEMENTATION) {
+			BDD ini = BDDBuilder.getIni(implying);
+			BDD trans = BDDBuilder.getTrans(implying);
+			BDD[] justs = implying.stream().filter(b -> b.isJustice()).map(b -> b.getBdd()).toArray(BDD[]::new);
+			justs = justs.length > 0 ? justs : new BDD[] {Env.TRUE()};
+			BDDVarSet vars = gm.getSys().modulePrimeVars().union(gm.getEnv().modulePrimeVars());
+			result = Env.TRUE().getFactory().vacuityC(justs, ini, trans, vars, Env.allCouplesPairing(), implied.getBdd());
 		} else {
 			result = GR1Implication.imply(implying, implied);
 		}
@@ -179,6 +229,22 @@ public class Vacuity {
 		return haveRel;
 	}
 	
+	/**
+	 * A premise set of a list is the union of premise sets
+	 * 
+	 * @param blist
+	 * @return
+	 */
+	public static List<BehaviorInfo> getEnvPremiseSet(List<BehaviorInfo> blist) {
+		List<BehaviorInfo> result = new ArrayList<BehaviorInfo>();
+
+		for (BehaviorInfo single : blist) {
+			result.addAll(getEnvPremiseSet(single));
+		}
+		
+		return result;
+	}
+	
 	public static List<BehaviorInfo> getEnvPremiseSet(BehaviorInfo b) {
 		List<BehaviorInfo> result = new ArrayList<BehaviorInfo>();
 		if (b.isInitial() && b!=bot) {
@@ -204,6 +270,22 @@ public class Vacuity {
 		return result;
 	}
 	
+	/**
+	 * A premise set of a list is the union of premise sets
+	 * 
+	 * @param blist
+	 * @return
+	 */
+	public static List<BehaviorInfo> getSysPremiseSet(List<BehaviorInfo> blist) {
+		List<BehaviorInfo> result = new ArrayList<BehaviorInfo>();
+
+		for (BehaviorInfo single : blist) {
+			result.addAll(getSysPremiseSet(single));
+		}
+		
+		return result;
+	}
+
 	public static List<BehaviorInfo> getSysPremiseSet(BehaviorInfo b) {
 		List<BehaviorInfo> result = new ArrayList<BehaviorInfo>();
 		if (b.isInitial() && b!=bot) {
@@ -218,6 +300,22 @@ public class Vacuity {
 			result.addAll(gm.getAuxBehaviorInfo());
 		}
 		return result;
+	}
+	
+	/**
+	 * Check a list of behaviors for trivial property (true w.r.t. domains) one by one
+	 * 
+	 * @param model
+	 * @param blist
+	 * @return
+	 */
+	public static boolean isTrivial(GameModel model, List<BehaviorInfo> blist) {
+		for (BehaviorInfo single : blist) {
+			if (!isTrivial(model, single)) {
+				return false;
+			}
+		}
+		return true;
 	}
 	
 	public static boolean isTrivial(GameModel model, BehaviorInfo b) {

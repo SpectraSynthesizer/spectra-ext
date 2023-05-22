@@ -35,7 +35,6 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 
 import tau.smlab.syntech.cores.ui.Activator;
-import tau.smlab.syntech.cores.ui.preferences.PreferenceConstants;
 
 
 /**

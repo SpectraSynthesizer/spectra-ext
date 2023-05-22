@@ -60,7 +60,7 @@ import tau.smlab.syntech.richcontrollerwalker.util.Mod;
 import tau.smlab.syntech.richcontrollerwalker.util.Modules;
 import tau.smlab.syntech.richcontrollerwalker.util.OptionsType;
 import tau.smlab.syntech.richcontrollerwalker.util.Preferences;
-import tau.smlab.syntech.ui.console.ConsolePrinter;
+import tau.smlab.syntech.ui.extension.console.ConsolePrinter;
 import tau.smlab.syntech.ui.extension.SyntechAction;
 
 public class ControllerWalkerAction extends SyntechAction<ControllerWalkerActionsID> {
@@ -73,6 +73,14 @@ public class ControllerWalkerAction extends SyntechAction<ControllerWalkerAction
 	@Override
 	public ControllerWalkerActionsID[] getActionItems() {
 		return ControllerWalkerActionsID.values();
+	}
+	
+	/**
+	 * We cannot run as a job as we require UI interaction. Must override and return false.
+	 */
+	@Override
+	protected boolean runAsJob() {
+		return false;
 	}
 
 	@Override

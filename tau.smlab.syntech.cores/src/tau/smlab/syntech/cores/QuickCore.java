@@ -30,7 +30,6 @@ package tau.smlab.syntech.cores;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.junit.platform.commons.util.Preconditions;
 
 import tau.smlab.syntech.cores.domainagnostic.MinimizerFactory;
 import tau.smlab.syntech.cores.domainagnostic.MinimizerType;
@@ -41,6 +40,7 @@ import tau.smlab.syntech.gamemodel.util.EnvTraceInfoBuilder;
 import tau.smlab.syntech.gamemodel.util.SysTraceInfoBuilder;
 import tau.smlab.syntech.gamemodel.util.TraceIdentifier;
 import tau.smlab.syntech.games.gr1.GR1GameExperiments;
+import tau.smlab.syntech.games.gr1.GR1GameImplC;
 
 /**
  * Computes an unrealizable core of specified sys behaviors
@@ -151,8 +151,8 @@ public class QuickCore implements Minimizer<Integer> {
 	}
 
 	private void minimizeJustices(List<Integer> part) {
-		Preconditions.condition(!part.removeAll(base), "Base and part must be disjoint"); //verify that base and part are not intersected
-		Preconditions.condition(ti.getSysTraces().containsAll(part), "Part must be included in system"); // the part must be all sys traces
+		checkCondition(!part.removeAll(base), "Base and part must be disjoint"); //verify that base and part are not intersected
+		checkCondition(ti.getSysTraces().containsAll(part), "Part must be included in system"); // the part must be all sys traces
 		List<Integer> allJusts = new ArrayList<Integer>();	
 
 		for (Integer t : part) {
@@ -193,6 +193,20 @@ public class QuickCore implements Minimizer<Integer> {
 		builder.build(newSys);
 	}
 
+	/**
+	 * Assert that the supplied {@code predicate} is {@code true}.
+	 *
+	 * @param predicate the predicate to check
+	 * @param message precondition violation message
+	 * @throws RuntimeException if the predicate is {@code false}
+	 * @see org.junit.platform.commons.util.Preconditions.condition(predicate, message)
+	 */
+	private void checkCondition(boolean predicate, String message) {
+		if (!predicate) {
+			throw new RuntimeException(message);
+		}
+	}
+
 	private void minimizeSafe() {
 		List<Integer> nonIni = new ArrayList<Integer>();
 		
@@ -220,7 +234,7 @@ public class QuickCore implements Minimizer<Integer> {
 		boolean stop = GR1GameExperiments.STOP_WHEN_INITIALS_LOST;
 		
 		GR1GameExperiments.USE_FIXPOINT_RECYCLE = GR1GameExperiments.STOP_WHEN_INITIALS_LOST = false;
-		GR1GameExperiments game = new GR1GameExperiments(gm);
+		GR1GameExperiments game = new GR1GameImplC(gm);
 		boolean unreal = !game.checkRealizability();
 		assert(unreal);
 		for (Integer curr : new ArrayList<Integer>(ini)) {

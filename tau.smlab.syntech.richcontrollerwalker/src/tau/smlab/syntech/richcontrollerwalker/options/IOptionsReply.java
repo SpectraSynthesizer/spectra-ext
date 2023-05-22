@@ -32,7 +32,6 @@ import java.util.Collections;
 import java.util.List;
 
 import net.sf.javabdd.BDD;
-import tau.smlab.syntech.richcontrollerwalker.bdds.BddUtil;
 
 public interface IOptionsReply {
 	List<String> strList();
@@ -62,7 +61,7 @@ public interface IOptionsReply {
 	
 	static IOptionsReply RouteOption(final BDD state) {
 		return new IOptionsReply() {
-			List<String> strList = Collections.singletonList(BddUtil.bddToStr(state));
+			List<String> strList = Collections.singletonList(state.toString());
 			
 			@Override
 			public List<String> strList() {

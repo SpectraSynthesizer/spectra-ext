@@ -38,10 +38,13 @@ import java.util.Map;
 
 import tau.smlab.syntech.richcontrollerwalker.bdds.IValue;
 import tau.smlab.syntech.richcontrollerwalker.bdds.IVar;
+import tau.smlab.syntech.richcontrollerwalker.filters.IFilter;
 import tau.smlab.syntech.richcontrollerwalker.util.OptionsType;
 
 public class DisplayedOptions implements IOptionsReply {
 	static int maxNumDisplayedOptions;
+	private final IAllSteps allSteps;
+	private final IFilter filter;
 	private final List<String> allOptions = new ArrayList<>();
 	private final Map<Integer, Integer> idMap = new HashMap<>();
 	private final OptionsType type;
@@ -49,18 +52,22 @@ public class DisplayedOptions implements IOptionsReply {
 	private Collection<String> dontCares = new HashSet<>();
 	private int batchIdx = 0;
 
-	DisplayedOptions(Collection<? extends IOption> optList, OptionsType type, Map<IVar, IValue> fixedVars,
+	DisplayedOptions(Collection<? extends IOption> optList, IAllSteps allSteps, IFilter filter, OptionsType type, Map<IVar, IValue> fixedVars,
 			Collection<IVar> dontCareVars) {
 		this.type = type;
+		this.allSteps = allSteps;
+		this.filter = filter;
+		prepareOptions(optList);
+		computeSpecialVars(fixedVars, dontCareVars);
+	}
+	
+	private void prepareOptions(Collection<? extends IOption> optList) {
 		Iterator<? extends IOption> iter = optList.iterator();
-		int i = 0;
 		while (iter.hasNext()) {
 			IOption opt = iter.next();
 			allOptions.add(opt.getExpression());
-			idMap.put(i, opt.getId());
-			i++;
+			idMap.put(idMap.size(), opt.getId());
 		}
-		computeSpecialVars(fixedVars, dontCareVars);
 	}
 	
 	public Map<String, String> getFixed() {
@@ -71,9 +78,14 @@ public class DisplayedOptions implements IOptionsReply {
 		return dontCares;
 	}
 
-	DisplayedOptions(IAllSteps allSteps, Collection<Integer> filteredIds, Map<IVar, IValue> fixedVars,
+	DisplayedOptions(IAllSteps allSteps, IFilter filter, Map<IVar, IValue> fixedVars,
 			Collection<IVar> dontCares) {
-		this(filterByIds(allSteps, filteredIds), OptionsType.STEPS, fixedVars, dontCares);
+		this(filter(allSteps.getCollection(), filter), allSteps, filter, OptionsType.STEPS, fixedVars, dontCares);
+	}
+	
+	DisplayedOptions(IAllSteps allSteps, Collection<Integer> stepsIds, Map<IVar, IValue> fixedVars,
+			Collection<IVar> dontCares) {
+		this(filter(allSteps, stepsIds), allSteps, null, OptionsType.STEPS, fixedVars, dontCares);
 	}
 
 	private void computeSpecialVars(Map<IVar, IValue> fixedVars, Collection<IVar> dontCareVars) {
@@ -90,11 +102,27 @@ public class DisplayedOptions implements IOptionsReply {
 		return idMap.get(index);
 	}
 
-	private static Collection<? extends IOption> filterByIds(IAllSteps allSteps, Collection<Integer> filteredIds) {
+	private static Collection<? extends IOption> filter(Collection<IStep> allSteps, IFilter filter) {
+		
 		Collection<IOption> l = new ArrayList<>();
-		for (int stepId : filteredIds) {
-			l.add(allSteps.getStep(stepId));
+		for (IStep step : allSteps) {
+			if (filter.isSatisfying(step)) {
+				l.add(step);
+			}
 		}
+
+		return l;
+	}
+	
+	private static Collection<? extends IOption> filter(IAllSteps allSteps, Collection<Integer> stepsIds) {
+		
+		Collection<IOption> l = new ArrayList<>();
+		for (IStep step : allSteps) {
+			if (stepsIds.contains(step.getId())) {
+				l.add(step);
+			}
+		}
+
 		return l;
 	}
 
@@ -108,12 +136,20 @@ public class DisplayedOptions implements IOptionsReply {
 	}
 
 	public boolean hasMoreOptions() {
-		return allOptions.size() > maxNumDisplayedOptions * (batchIdx+1);
+		return (allOptions.size() > maxNumDisplayedOptions * (batchIdx+1)) && 
+				(allSteps == null || allSteps.iterator().hasNext());
 	}
 
 	@Override
 	public List<String> strList() {
 		int fromIndex = batchIdx * maxNumDisplayedOptions;
+		
+		if (fromIndex + maxNumDisplayedOptions > allOptions.size() && allSteps != null && filter != null) {
+			System.out.println(String.format("Number of options is %d, loading until %d", allOptions.size(), fromIndex + maxNumDisplayedOptions));
+			List<IStep> newSteps = allSteps.loadSteps();
+			prepareOptions(filter(newSteps, filter));
+		}
+		
 		int toIndex = Math.min(allOptions.size(), fromIndex + maxNumDisplayedOptions);
 
 		return allOptions.subList(fromIndex, toIndex);
@@ -124,8 +160,9 @@ public class DisplayedOptions implements IOptionsReply {
 		if (!hasMoreOptions()) {
 			throw new IllegalStateException();
 		}
-		List<String> strList = strList();
+		
 		batchIdx++;
+		List<String> strList = strList();
 		return strList;
 	}
 

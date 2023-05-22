@@ -29,6 +29,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package tau.smlab.syntech.richcontrollerwalker.options;
 
 import java.util.Collection;
+import java.util.List;
 
 import net.sf.javabdd.BDD;
 import tau.smlab.syntech.richcontrollerwalker.bdds.IBdd;
@@ -47,4 +48,6 @@ public interface IAllSteps extends IOptions, IBdd, Iterable<IStep> {
 	IStep getStep(int stepId);
 
 	void setNew(BDD successors, BDD varsByTurn);
+	
+	List<IStep> loadSteps();
 }

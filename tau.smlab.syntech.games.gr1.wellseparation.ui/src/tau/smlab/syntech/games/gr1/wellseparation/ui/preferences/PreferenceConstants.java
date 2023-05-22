@@ -31,4 +31,6 @@ package tau.smlab.syntech.games.gr1.wellseparation.ui.preferences;
 public class PreferenceConstants {
 
 	public static final String WELL_SEP_SYS = "WellSep";
+	public static final String SYS = "SYS";
+	public static final String NONE = "NONE";
 }

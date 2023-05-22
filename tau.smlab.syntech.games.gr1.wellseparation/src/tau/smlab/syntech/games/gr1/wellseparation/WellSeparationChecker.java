@@ -43,6 +43,7 @@ import tau.smlab.syntech.gamemodel.ModuleException;
 import tau.smlab.syntech.gamemodel.PlayerModule;
 import tau.smlab.syntech.games.AbstractGamesException;
 import tau.smlab.syntech.games.gr1.GR1Game;
+import tau.smlab.syntech.games.gr1.GR1GameBuilder;
 import tau.smlab.syntech.games.gr1.GR1Memory;
 import tau.smlab.syntech.jtlv.CoreUtil;
 import tau.smlab.syntech.jtlv.Env;
@@ -55,459 +56,465 @@ import tau.smlab.syntech.jtlv.Env;
  */
 public class WellSeparationChecker {
 
-  private PlayerModule sys;
-  private PlayerModule env;
+	private PlayerModule sys;
+	private PlayerModule env;
 
-  /**
-   * reachable states of env
-   */
-  private BDD reach;
+	/**
+	 * reachable states of env
+	 */
+	private BDD reach;
 
-  /**
-   * a core set of assumptions that make env non-well-separated
-   */
-  private List<BehaviorInfo> core;
+	/**
+	 * a core set of assumptions that make env non-well-separated
+	 */
+	private List<BehaviorInfo> core;
 
-  public enum Positions {
-    /**
-     * system can force violation all initial choices of the environment
-     */
-    ALL,
-    /**
-     * system can force violation from some states the environment can reach
-     */
-    REACH
-  }
+	public enum Positions {
+		/**
+		 * system can force violation all initial choices of the environment
+		 */
+		ALL,
+		/**
+		 * system can force violation from some states the environment can reach
+		 */
+		REACH
+	}
 
-  public enum Systems {
-    /**
-     * Checks well-separation for system TRUE & G TRUE & GF FALSE but with safeties from pre-transformations
-     */
-    NONE,
-    /**
-     * Checks well-separation for systems satisfying the safeties in the given system spec
-     */
-    SPEC,
-    /**
-     * Checks whether a controller exists that does not violate the assumptions FIXME still don't know how to do that
-     */
-    CONTROLLER
-  }
+	public enum Systems {
+		/**
+		 * Checks well-separation for system TRUE & G TRUE & GF FALSE but with safeties
+		 * from pre-transformations
+		 */
+		NONE,
+		/**
+		 * Checks well-separation for systems satisfying the safeties in the given
+		 * system spec
+		 */
+		SPEC,
+		/**
+		 * Checks whether a controller exists that does not violate the assumptions
+		 * FIXME still don't know how to do that
+		 */
+		CONTROLLER
+	}
 
-  public enum EnvSpecPart {
-    /**
-     * initial part of environment spec can be violated
-     */
-    INI,
-    /**
-     * safety part of environment spec can be violated (including possibly initial)
-     */
-    SAFETY,
-    /**
-     * liveness part of environment spec can be violated
-     */
-    JUSTICE
-  }
+	public enum EnvSpecPart {
+		/**
+		 * initial part of environment spec can be violated
+		 */
+		INI,
+		/**
+		 * safety part of environment spec can be violated (including possibly initial)
+		 */
+		SAFETY,
+		/**
+		 * liveness part of environment spec can be violated
+		 */
+		JUSTICE
+	}
 
-  public boolean checkEnvWellSeparated(GameModel model, Systems s, EnvSpecPart e, Positions p,
-      boolean minimize)
-      throws ModuleException, AbstractGamesException {
+	public boolean checkEnvWellSeparated(GameModel model, Systems s, EnvSpecPart e, Positions p, boolean minimize)
+			throws ModuleException, AbstractGamesException {
 
-    env = model.getEnv();
-    sys = model.getSys();
+		env = model.getEnv();
+		sys = model.getSys();
 
-    restrictEnv(e);
+		restrictEnv(e);
 
-    restrictSys(model, s);
+		restrictSys(model, s);
 
-    boolean wellSep = false;
+		boolean wellSep = false;
 
-    GR1Game rg = new GR1Game(model);
-    rg.checkRealizability();
+		GR1GameBuilder.stopWhenInitialsLost(false);
+		GR1Game rg = GR1GameBuilder.getDefault(model);
+		rg.checkRealizability();
 
-    if (Positions.ALL.equals(p)) {
-      wellSep = !rg.sysWinAllInitial();
-    } else if (Positions.REACH.equals(p)) {
-      BDD trans = env.trans().and(sys.trans());
-      BDD ini = env.initial().and(sys.initial());
-      reach = Env.allSucc(ini, trans);
-      trans.free();
-      wellSep = rg.getMem().getWin().and(reach).isZero();
-      reach.free();
-    }
-    rg.free();
+		if (Positions.ALL.equals(p)) {
+			wellSep = !rg.sysWinAllInitial();
+		} else if (Positions.REACH.equals(p)) {
+			BDD trans = env.trans().and(sys.trans());
+			BDD ini = env.initial().and(sys.initial());
+			reach = Env.allSucc(ini, trans);
+			trans.free();
+			wellSep = rg.getMem().getWin().and(reach).isZero();
+			reach.free();
+		}
+		rg.free();
 
-    if (!wellSep && minimize) {
-      ArrayList<BehaviorInfo> asms = new ArrayList<>();
-      for (BehaviorInfo asm : model.getEnvBehaviorInfo()) {
-        if (!(asm.isSafety() && asm.safety.isOne())) {
-          asms.add(asm);
-        }
-      }
+		if (!wellSep && minimize) {
+			ArrayList<BehaviorInfo> asms = new ArrayList<>();
+			for (BehaviorInfo asm : model.getEnvBehaviorInfo()) {
+				if (!(asm.isSafety() && asm.safety.isOne())) {
+					asms.add(asm);
+				}
+			}
 
-      DdminNonWellSeparation ddmin = new DdminNonWellSeparation(model, p);
-      core = ddmin.minimize(asms);
+			DdminNonWellSeparation ddmin = new DdminNonWellSeparation(model, p);
+			core = ddmin.minimize(asms);
 
-      // make sure last game was this
-      ddmin.buildEnv(core, env);
-      rg = new GR1Game(model);
-      if (rg.checkRealizability()) {
-        System.out.println("Minimal core found.");
-      }
+			// make sure last game was this
+			ddmin.buildEnv(core, env);
+			rg = GR1GameBuilder.getDefault(model);
+			if (rg.checkRealizability()) {
+				System.out.println("Minimal core found.");
+			}
 
-      System.out.println("From " + asms.size() + " to " + core.size());
-      for (BehaviorInfo asm : core) {
-        System.out.println(asm);
-      }
-    }
+			System.out.println("From " + asms.size() + " to " + core.size());
+			for (BehaviorInfo asm : core) {
+				System.out.println(asm);
+			}
+		}
 
-    return wellSep;
-  }
+		return wellSep;
+	}
 
-  private void restrictSys(GameModel model, Systems s) {
-    List<BehaviorInfo> auxSpecs = model.getAuxBehaviorInfo();
+	private void restrictSys(GameModel model, Systems s) {
+		List<BehaviorInfo> auxSpecs = model.getAuxBehaviorInfo();
 
-    switch (s) {
-    case NONE:
-      // create spec TRUE & G TRUE & GF FALSE
-      sys.resetInitial();
-      sys.resetTrans();
-      // add auxiliary specs from PastLTL and response translations 
-      for (BehaviorInfo spec : auxSpecs) {
-        if (spec.isInitial()) {
-          sys.conjunctInitial(spec.initial.id());
-        }
-        if (spec.isSafety()) {
-          sys.conjunctTrans(spec.safety.id());
-        }
-      }
-      sys.resetJustice();
-      sys.addJustice(Env.FALSE());
-      break;
-    case SPEC:
-      // keep all safeties but replace justice by FALSE
-      sys.resetJustice();
-      sys.addJustice(Env.FALSE());
-      break;
-    case CONTROLLER:
-      // no modification here
-      break;
-    default:
-      break;
-    }
-  }
+		switch (s) {
+		case NONE:
+			// create spec TRUE & G TRUE & GF FALSE
+			sys.resetInitial();
+			sys.resetTrans();
+			// add auxiliary specs from PastLTL and response translations
+			for (BehaviorInfo spec : auxSpecs) {
+				if (spec.isInitial()) {
+					sys.conjunctInitial(spec.initial.id());
+				}
+				if (spec.isSafety()) {
+					sys.conjunctTrans(spec.safety.id());
+				}
+			}
+			sys.resetJustice();
+			sys.addJustice(Env.FALSE());
+			break;
+		case SPEC:
+			// keep all safeties but replace justice by FALSE
+			sys.resetJustice();
+			sys.addJustice(Env.FALSE());
+			break;
+		case CONTROLLER:
+			// no modification here
+			break;
+		default:
+			break;
+		}
+	}
 
-  private void restrictEnv(EnvSpecPart e) {
-    switch (e) {
-    case INI:
-      // env spec: ini & G TRUE & GF TRUE
-      env.resetTrans();
-      env.resetJustice();
-      env.addJustice(Env.TRUE());
-      break;
-    case SAFETY:
-      // env spec: ini & G safety & GF TRUE
-      env.resetJustice();
-      env.addJustice(Env.TRUE());
-      break;
-    case JUSTICE:
-      // keep spec as is
-      break;
-    default:
-      break;
-    }
-  }
+	private void restrictEnv(EnvSpecPart e) {
+		switch (e) {
+		case INI:
+			// env spec: ini & G TRUE & GF TRUE
+			env.resetTrans();
+			env.resetJustice();
+			env.addJustice(Env.TRUE());
+			break;
+		case SAFETY:
+			// env spec: ini & G safety & GF TRUE
+			env.resetJustice();
+			env.addJustice(Env.TRUE());
+			break;
+		case JUSTICE:
+			// keep spec as is
+			break;
+		default:
+			break;
+		}
+	}
 
-  public List<BehaviorInfo> computeCore(GameModel model) throws Exception {
-    return computeCore(model, Systems.NONE);
-  }
+	public List<BehaviorInfo> computeCore(GameModel model) throws Exception {
+		return computeCore(model, Systems.NONE);
+	}
 
-  public List<BehaviorInfo> computeCore(GameModel model, Systems s) throws Exception {
-	return computeCore(model, s, Positions.REACH);
-  }
+	public List<BehaviorInfo> computeCore(GameModel model, Systems s) throws Exception {
+		return computeCore(model, s, Positions.REACH);
+	}
 
-/**
-   * computes a core for ENV_JUSTICE, P_REACH, S_NONE
-   * 
-   * @param cu
-   * @return
-   * @throws Exception
-   */
-  public List<BehaviorInfo> computeCore(GameModel model, Systems s, Positions p) throws Exception {
+	/**
+	 * computes a core for ENV_JUSTICE, P_REACH, S_NONE
+	 * 
+	 * @param cu
+	 * @return
+	 * @throws Exception
+	 */
+	public List<BehaviorInfo> computeCore(GameModel model, Systems s, Positions p) throws Exception {
 
-    env = model.getEnv();
-    sys = model.getSys();
+		env = model.getEnv();
+		sys = model.getSys();
 
-    restrictSys(model, s);
+		restrictSys(model, s);
 
-    ArrayList<BehaviorInfo> asms = new ArrayList<>();
-    for (BehaviorInfo asm : model.getEnvBehaviorInfo()) {
-      if (!(asm.isSafety() && asm.safety.isOne())) {
-        asms.add(asm);
-      }
-    }
+		ArrayList<BehaviorInfo> asms = new ArrayList<>();
+		for (BehaviorInfo asm : model.getEnvBehaviorInfo()) {
+			if (!(asm.isSafety() && asm.safety.isOne())) {
+				asms.add(asm);
+			}
+		}
 
-    DdminNonWellSeparation ddmin = new DdminNonWellSeparation(model, p);
-    core = ddmin.minimize(asms);
+		DdminNonWellSeparation ddmin = new DdminNonWellSeparation(model, p);
+		core = ddmin.minimize(asms);
 
-    return core;
-  }
+		return core;
+	}
 
-  private Map<String, Set<Integer>> witnessInfo;
+	private Map<String, Set<Integer>> witnessInfo;
 
-  /**
-   * checks whether diagnose computed witness info
-   * 
-   * @return
-   */
-  public boolean hasWitnessInfo() {
-    return witnessInfo != null && !witnessInfo.isEmpty();
-  }
+	/**
+	 * checks whether diagnose computed witness info
+	 * 
+	 * @return
+	 */
+	public boolean hasWitnessInfo() {
+		return witnessInfo != null && !witnessInfo.isEmpty();
+	}
 
-  /**
-   * returns witness info possibly computed by diagnose
-   * 
-   * @return
-   */
-  public Map<String, Set<Integer>> getWitnessInfo() {
-    return witnessInfo;
-  }
+	/**
+	 * returns witness info possibly computed by diagnose
+	 * 
+	 * @return
+	 */
+	public Map<String, Set<Integer>> getWitnessInfo() {
+		return witnessInfo;
+	}
 
-  /**
-   * diagnoses cases of non-well separation consisting of Position and EnvSpecPart
-   * 
-   * WARNING: messes up env and sys
-   * 
-   * @param cu
-   * @return
-   * @throws ModuleException
-   * @throws AbstractGamesException
-   */
-  public List<String> diagnose(GameModel model, Systems sysPart) throws ModuleException, AbstractGamesException {
+	/**
+	 * diagnoses cases of non-well separation consisting of Position and EnvSpecPart
+	 * 
+	 * WARNING: messes up env and sys
+	 * 
+	 * @param cu
+	 * @return
+	 * @throws ModuleException
+	 * @throws AbstractGamesException
+	 */
+	public List<String> diagnose(GameModel model, Systems sysPart) throws ModuleException, AbstractGamesException {
 
-    env = model.getEnv();
-    sys = model.getSys();
+		env = model.getEnv();
+		sys = model.getSys();
 
-    List<String> res = new ArrayList<>();
-    witnessInfo = new HashMap<String, Set<Integer>>();
+		List<String> res = new ArrayList<>();
+		witnessInfo = new HashMap<String, Set<Integer>>();
 
-    //////////////////////
-    // Part E-ini
-    //////////////////////
-    if (env.initial().isZero()) {
-      res.add(Positions.ALL + ", " + EnvSpecPart.INI);
-      return res;
-    }
+		//////////////////////
+		// Part E-ini
+		//////////////////////
+		if (env.initial().isZero()) {
+			res.add(Positions.ALL + ", " + EnvSpecPart.INI);
+			return res;
+		}
 
-    //////////////////////
-    // Part E-safe
-    //////////////////////
+		//////////////////////
+		// Part E-safe
+		//////////////////////
 
-    // system (T+aux, T+aux, {F})
-    restrictSys(model, sysPart);
+		// system (T+aux, T+aux, {F})
+		restrictSys(model, sysPart);
 
-    BDD reach = Env.allSucc(env.initial().and(sys.initial()), env.trans().and(sys.trans()));
+		BDD reach = Env.allSucc(env.initial().and(sys.initial()), env.trans().and(sys.trans()));
 
-    // environment with no justices
-    List<BDD> envJ = new ArrayList<>();
-    int j = env.justiceNum();
-    for (int i = 0; i < j; i++) {
-      // keep copies because we will reset
-      envJ.add(env.justiceAt(i).id());
-    }
-    env.resetJustice();
-    env.addJustice(Env.TRUE());
+		// environment with no justices
+		List<BDD> envJ = new ArrayList<>();
+		int j = env.justiceNum();
+		for (int i = 0; i < j; i++) {
+			// keep copies because we will reset
+			envJ.add(env.justiceAt(i).id());
+		}
+		env.resetJustice();
+		env.addJustice(Env.TRUE());
 
-    GR1Game rg = new GR1Game(model);
-    rg.checkRealizability();
-    BDD wins = rg.sysWinningStates().id();
-    BDD witness = wins.and(reach);
-    if (!witness.isZero()) {
-      wins.free();
-      if (rg.sysWinAllInitial()) {
-        res.add(Positions.ALL + ", " + EnvSpecPart.SAFETY);
-        return res;
-      } else {
-        res.add(Positions.REACH + ", " + EnvSpecPart.SAFETY);
-        // check easy case where state violates a SAFETY
-        for (BehaviorInfo bi : model.getEnvBehaviorInfo()) {
-          if (bi.isSafety()) {
-            BDD statesWithSucc = witness.and(bi.safety).exist(env.modulePrimeVars());
-            BDD test = witness.and(statesWithSucc.not());
-            statesWithSucc.free();
-            if (!test.isZero()) {
-              // reduce to relevant variables
-              BDDVarSet relevantUnPVars = bi.safety.support().minus(env.modulePrimeVars());
-              BDD smallWitness = CoreUtil.satOne(test, relevantUnPVars);
-              relevantUnPVars.free();
-              
-              Set<Integer> tids = new HashSet<>();
-              tids.add(bi.traceId);
-              witnessInfo.put(smallWitness.toStringWithDomains(Env.stringer), tids);
-              
-              smallWitness.free();
-              test.free();
-              break;
-            }
-            test.free();
-          }
-        }
+		GR1GameBuilder.stopWhenInitialsLost(false);
+		GR1Game rg = GR1GameBuilder.getDefault(model);
+		rg.checkRealizability();
+		BDD wins = rg.sysWinningStates().id();
+		BDD witness = wins.and(reach);
+		if (!witness.isZero()) {
+			wins.free();
+			if (rg.sysWinAllInitial()) {
+				res.add(Positions.ALL + ", " + EnvSpecPart.SAFETY);
+				return res;
+			} else {
+				res.add(Positions.REACH + ", " + EnvSpecPart.SAFETY);
+				// check easy case where state violates a SAFETY
+				for (BehaviorInfo bi : model.getEnvBehaviorInfo()) {
+					if (bi.isSafety()) {
+						BDD statesWithSucc = witness.and(bi.safety).exist(env.modulePrimeVars());
+						BDD test = witness.and(statesWithSucc.not());
+						statesWithSucc.free();
+						if (!test.isZero()) {
+							// reduce to relevant variables
+							BDDVarSet relevantUnPVars = bi.safety.support().minus(env.modulePrimeVars());
+							BDD smallWitness = CoreUtil.satOne(test, relevantUnPVars);
+							relevantUnPVars.free();
 
-        // TODO do more by computing safety core
-      }
-    }
-    rg.free();
+							Set<Integer> tids = new HashSet<>();
+							tids.add(bi.traceId);
+							witnessInfo.put(smallWitness.toStringWithDomains(Env.stringer), tids);
 
-    //////////////////////
-    // Part E-just
-    //////////////////////
+							smallWitness.free();
+							test.free();
+							break;
+						}
+						test.free();
+					}
+				}
 
-    env.resetJustice();
-    for (BDD just : envJ) {
-      // now adding back originals
-      env.addJustice(just);
-    }
+				// TODO do more by computing safety core
+			}
+		}
+		rg.free();
 
-    rg = new GR1Game(model);
-    rg.checkRealizability();
-    BDD win = rg.sysWinningStates().id();
-    if (!win.and(reach).isZero()) {
-      win.free();
-      reach.free();
-      if (rg.sysWinAllInitial()) {
-        res.add(Positions.ALL + ", " + EnvSpecPart.JUSTICE);
-      } else {
-        res.add(Positions.REACH + ", " + EnvSpecPart.JUSTICE);
-      }
-    }
-    rg.free();
+		//////////////////////
+		// Part E-just
+		//////////////////////
 
-    return res;
-  }
+		env.resetJustice();
+		for (BDD just : envJ) {
+			// now adding back originals
+			env.addJustice(just);
+		}
 
-  /**
-   * diagnoses cases of non-well separation consisting of Position and EnvSpecPart
-   * 
-   * WARNING: messes up env and sys
-   * 
-   * @param model
-   * @return
-   * @throws ModuleException
-   * @throws AbstractGamesException
-   */
-  public List<String> diagnose(GameModel model) throws ModuleException, AbstractGamesException {
-    return diagnose(model, Systems.NONE);
-  }
+		rg = GR1GameBuilder.getDefault(model);
+		rg.checkRealizability();
+		BDD win = rg.sysWinningStates().id();
+		if (!win.and(reach).isZero()) {
+			win.free();
+			reach.free();
+			if (rg.sysWinAllInitial()) {
+				res.add(Positions.ALL + ", " + EnvSpecPart.JUSTICE);
+			} else {
+				res.add(Positions.REACH + ", " + EnvSpecPart.JUSTICE);
+			}
+		}
+		rg.free();
 
-  /**
-   * returns reachable states as computed by <code>checkEnvWellSeparated</code> when invoked with Positions.REACH
-   * 
-   * @return
-   */
-  public BDD getReach() {
-    return reach;
-  }
+		return res;
+	}
 
-  public GR1Memory computeNonWellSepGame(GameModel model, Systems sysPart) {
+	/**
+	 * diagnoses cases of non-well separation consisting of Position and EnvSpecPart
+	 * 
+	 * WARNING: messes up env and sys
+	 * 
+	 * @param model
+	 * @return
+	 * @throws ModuleException
+	 * @throws AbstractGamesException
+	 */
+	public List<String> diagnose(GameModel model) throws ModuleException, AbstractGamesException {
+		return diagnose(model, Systems.NONE);
+	}
 
-    env = model.getEnv();
-    sys = model.getSys();
+	/**
+	 * returns reachable states as computed by <code>checkEnvWellSeparated</code>
+	 * when invoked with Positions.REACH
+	 * 
+	 * @return
+	 */
+	public BDD getReach() {
+		return reach;
+	}
 
-    //////////////////////
-    // Part E-ini
-    //////////////////////
-    if (env.initial().isZero()) {
-      GR1Memory res = new GR1Memory();
-      res.setComplete(true);
-      res.setWin(Env.TRUE());
-      return res;
-    }
+	public GR1Memory computeNonWellSepGame(GameModel model, Systems sysPart) {
 
-    //////////////////////
-    // Part E-safe
-    //////////////////////
+		env = model.getEnv();
+		sys = model.getSys();
 
-    // system (T+aux, T+aux, {F})
-    restrictSys(model, sysPart);
+		//////////////////////
+		// Part E-ini
+		//////////////////////
+		if (env.initial().isZero()) {
+			GR1Memory res = new GR1Memory();
+			res.setComplete(true);
+			res.setWin(Env.TRUE());
+			return res;
+		}
 
-    BDD reach = Env.allSucc(env.initial().and(sys.initial()), env.trans().and(sys.trans()));
-    
-    if (reach.isZero()) {
-      // some player deadlocks in initial state
-      if (env.initial().isZero()) {
-        // environment has no initial states
-        GR1Memory mem = new GR1Memory();
-        mem.setComplete(true);
-        mem.setWin(Env.TRUE());
-        return mem; 
-      } else {
-        // system deadlocks on all env.ini() states
-        return null;
-      }
-    }
+		//////////////////////
+		// Part E-safe
+		//////////////////////
 
-    // environment with no justices
-    List<BDD> envJ = new ArrayList<>();
-    int j = env.justiceNum();
-    for (int i = 0; i < j; i++) {
-      // keep copies because we will reset
-      envJ.add(env.justiceAt(i).id());
-    }
-    env.resetJustice();
-    env.addJustice(Env.TRUE());
+		// system (T+aux, T+aux, {F})
+		restrictSys(model, sysPart);
 
-    GR1Game rg = new GR1Game(model);
-    rg.checkRealizability();
-    BDD wins = rg.sysWinningStates().id();
-    BDD reachAndNonWellSep = wins.and(reach);
-    if (!reachAndNonWellSep.isZero()) {
-      wins.free();
-      if (rg.sysWinAllInitial()) {
-        return rg.getMem();
-      } else {
-        // restrict game to go from reachable winning states only
-        model.getSys().resetInitial();
-        model.getSys().conjunctInitial(reachAndNonWellSep.id());
-        model.getEnv().resetInitial();
-        model.getEnv().conjunctInitial(reachAndNonWellSep.exist(sys.modulePrimeVars()));
-        // FIXME probably this can already lead to a deadlock
-        return rg.getMem();
-      }
-    }
-    rg.free();
+		BDD reach = Env.allSucc(env.initial().and(sys.initial()), env.trans().and(sys.trans()));
 
-    //////////////////////
-    // Part E-just
-    //////////////////////
+		if (reach.isZero()) {
+			// some player deadlocks in initial state
+			if (env.initial().isZero()) {
+				// environment has no initial states
+				GR1Memory mem = new GR1Memory();
+				mem.setComplete(true);
+				mem.setWin(Env.TRUE());
+				return mem;
+			} else {
+				// system deadlocks on all env.ini() states
+				return null;
+			}
+		}
 
-    env.resetJustice();
-    for (BDD just : envJ) {
-      // now adding back originals
-      env.addJustice(just);
-    }
+		// environment with no justices
+		List<BDD> envJ = new ArrayList<>();
+		int j = env.justiceNum();
+		for (int i = 0; i < j; i++) {
+			// keep copies because we will reset
+			envJ.add(env.justiceAt(i).id());
+		}
+		env.resetJustice();
+		env.addJustice(Env.TRUE());
 
-    rg = new GR1Game(model);
-    rg.checkRealizability();
-    BDD win = rg.sysWinningStates().id();
-    reachAndNonWellSep = win.and(reach);
-    if (!reachAndNonWellSep.isZero()) {
-      win.free();
-      reach.free();
-      if (rg.sysWinAllInitial()) {
-        return rg.getMem();
-      } else {
-        // restrict game to go from reachable winning states only
-        model.getSys().resetInitial();
-        model.getSys().conjunctInitial(reachAndNonWellSep.id());
-        model.getEnv().resetInitial();
-        model.getEnv().conjunctInitial(reachAndNonWellSep.exist(sys.modulePrimeVars()));
-        // FIXME probably this can already lead to a deadlock
-        return rg.getMem();
-      }
-    }
-    rg.free();
+		GR1GameBuilder.stopWhenInitialsLost(false);
+		GR1Game rg = GR1GameBuilder.getDefault(model);
+		rg.checkRealizability();
+		BDD wins = rg.sysWinningStates().id();
+		BDD reachAndNonWellSep = wins.and(reach);
+		if (!reachAndNonWellSep.isZero()) {
+			wins.free();
+			if (rg.sysWinAllInitial()) {
+				return rg.getMem();
+			} else {
+				// restrict game to go from reachable winning states only
+				model.getSys().resetInitial();
+				model.getSys().conjunctInitial(reachAndNonWellSep.id());
+				model.getEnv().resetInitial();
+				model.getEnv().conjunctInitial(reachAndNonWellSep.exist(sys.modulePrimeVars()));
+				// FIXME probably this can already lead to a deadlock
+				return rg.getMem();
+			}
+		}
+		rg.free();
 
-    return null;
-  }
+		//////////////////////
+		// Part E-just
+		//////////////////////
+
+		env.resetJustice();
+		for (BDD just : envJ) {
+			// now adding back originals
+			env.addJustice(just);
+		}
+
+		rg = GR1GameBuilder.getDefault(model);
+		rg.checkRealizability();
+		BDD win = rg.sysWinningStates().id();
+		reachAndNonWellSep = win.and(reach);
+		if (!reachAndNonWellSep.isZero()) {
+			win.free();
+			reach.free();
+			if (rg.sysWinAllInitial()) {
+				return rg.getMem();
+			} else {
+				// restrict game to go from reachable winning states only
+				model.getSys().resetInitial();
+				model.getSys().conjunctInitial(reachAndNonWellSep.id());
+				model.getEnv().resetInitial();
+				model.getEnv().conjunctInitial(reachAndNonWellSep.exist(sys.modulePrimeVars()));
+				// FIXME probably this can already lead to a deadlock
+				return rg.getMem();
+			}
+		}
+		rg.free();
+
+		return null;
+	}
 
 }

@@ -32,7 +32,6 @@ import org.eclipse.core.runtime.preferences.AbstractPreferenceInitializer;
 import org.eclipse.jface.preference.IPreferenceStore;
 
 import tau.smlab.syntech.games.gr1.wellseparation.ui.Activator;
-import tau.smlab.syntech.games.gr1.wellseparation.ui.preferences.PreferenceConstants;
 
 /**
  * Class used to initialize default preference values.
@@ -47,7 +46,7 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
 	 */
 	public void initializeDefaultPreferences() {
 		IPreferenceStore store = Activator.getDefault().getPreferenceStore();
-		store.setDefault(PreferenceConstants.WELL_SEP_SYS, 0);
+		store.setDefault(PreferenceConstants.WELL_SEP_SYS, PreferenceConstants.SYS);
 		}
 
 }

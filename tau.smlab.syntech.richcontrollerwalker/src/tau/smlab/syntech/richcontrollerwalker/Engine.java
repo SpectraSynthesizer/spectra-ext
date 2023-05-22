@@ -28,6 +28,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package tau.smlab.syntech.richcontrollerwalker;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,42 +38,49 @@ import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
 
 import net.sf.javabdd.BDD;
-import net.sf.javabdd.BDD.BDDIterator;
-import tau.smlab.syntech.games.controller.symbolic.SymbolicController;
+import tau.smlab.syntech.games.controller.Controller;
+import tau.smlab.syntech.games.controller.StaticController;
+import tau.smlab.syntech.games.controller.jits.BasicJitController;
 import tau.smlab.syntech.games.util.SaveLoadWithDomains;
 import tau.smlab.syntech.jtlv.CoreUtil;
 import tau.smlab.syntech.jtlv.Env;
-import tau.smlab.syntech.jtlv.lib.FixPoint;
 import tau.smlab.syntech.richcontrollerwalker.bdds.BddUtil;
 import tau.smlab.syntech.richcontrollerwalker.util.Mod;
 
 final class Engine {
-	private final SymbolicController ctrl = new SymbolicController();
+
+	private final Controller ctrl;
 	private final ReachabilityGame reachGame = new ReachabilityGame();
 	private FullState fullState;
 	private Mod turn;
 
-	Engine(String path) throws IOException {
+	Engine(String path, String name, boolean useJitController) throws IOException {
+		
+		ctrl = useJitController ? new BasicJitController() : new StaticController();
+		
+		path += File.separator + (useJitController ? "jit" : "static");
+		
 		Map<String, String[]> sysVarsMap = new HashMap<>();
 		Map<String, String[]> envVarsMap = new HashMap<>();
-		SaveLoadWithDomains.loadStructureAndDomains(path + "vars.doms", sysVarsMap, envVarsMap);
-		ctrl.setTrans(Env.loadBDD(path + "controller.trans.bdd"));
-		ctrl.setInit(Env.loadBDD(path + "controller.init.bdd").exist(Env.globalPrimeVars()));
+		
+		SaveLoadWithDomains.loadStructureAndDomains(path + File.separator + name + "." + SaveLoadWithDomains.VARS_FILE, sysVarsMap, envVarsMap);
+		
+		sysVarsMap.entrySet().removeIf(var -> var.getKey().startsWith("util_"));
+		envVarsMap.entrySet().removeIf(var -> var.getKey().startsWith("util_"));
+	    
+		ctrl.load(path, name, sysVarsMap, envVarsMap);
+		
 		BddUtil.setNewVars(sysVarsMap, envVarsMap);
 		fullState = new FullState();
 		fullState.restart();
 	}
-
-	BDDIterator getStepsIterator() {
-		return fullState.successors.iterator(BddUtil.getVarsByModule(turn).toVarSet());
-	}
 	
-	boolean isReachable(BDD bpBdd) {
-		return reachGame.isReachable(bpBdd);
+	boolean isReachable(BDD bp) {
+		return reachGame.isReachable(bp);
 	}
 
-	List<BDD> computeReachRoute(BDD bpBdd) {
-		return reachGame.computeReachRoute(bpBdd);
+	List<BDD> computeReachRoute(BDD bp) {
+		return reachGame.computeReachRoute(bp);
 	}
 
 	FullState getFullState() {
@@ -91,21 +99,22 @@ final class Engine {
 	
 
 	BDD getInitialState() {
-		return ctrl.initial().id();
+		return ctrl.initial();
 	}
-
-	BDD getEngineMove() {
-		return Algs.randomSat(fullState.getSuccessors(), BddUtil.getVarsByModule(turn));
+	
+	BDD getRandomMove() {
+		return Algs.randomSat(fullState.successors, BddUtil.getVarsByModule(getTurn()));
 	}
-
-	void FreeAndSetFullState(FullState newFullState) {
+	
+	void freeAndSetFullState(FullState newFullState) {
 		fullState.reset();
 		fullState = Objects.requireNonNull(newFullState);
 	}
 
 	FullState getCopyOfFullState() {
 		FullState copy = new FullState();
-		copy.setFullState(fullState.state.id(), fullState.successors.id());
+		copy.state = fullState.state.id();
+		copy.successors = fullState.successors.id();
 		return copy;
 	}
 
@@ -131,52 +140,29 @@ final class Engine {
 			successors = newSucc;
 		}
 
-		void setFullState(BDD newState, BDD newSuccessors) {
-			freeAndSetState(newState);
-			freeAndSetSuccessors(newSuccessors);
-		}
-
-		void freeAndSetState(BDD newState) {
-			if (Objects.nonNull(state) && !state.isFree()) {
-				state.free();
-			}
-			state = newState;
-		}
-
-		void freeAndSetSuccessors(BDD newSuccessors) {
-			if (Objects.nonNull(successors) && !successors.isFree()) {
-				successors.free();
-			}
-			successors = newSuccessors;
-		}
-
 		void reset() {
-			setFullState(null, null);
+			free();
+			this.state = null;
+			this.successors = null;
+		}
+		
+		void free() {
+			if (Objects.nonNull(state) && !state.isFree()) state.free();
+			if (Objects.nonNull(successors) && !successors.isFree()) successors.free();
 		}
 
 		void restart() {
-			setFullState(ctrl.initial().id(), ctrl.initial().id());
+			free();
+			this.state = ctrl.initial().id();
+			this.successors = ctrl.initial().id();
 		}
 
-		void applyEnvChoice(BDD step) {
-			freeAndSetSuccessors(successors.and(step));
+		void freeAndSetNewStep(BDD step) {
+			free();
+			this.state = step.id();
+			this.successors = ctrl.succ(this.state);
 		}
-
-		void applySysChoice(BDD step) {
-			freeAndSetState(successors.and(step));
-			updateSuccessors();
-		}
-
-		void setStateAndUpdateSuccessors(BDD newCurrentState) {
-			setState(newCurrentState.id());
-			// freeAndSetState(newCurrentState.id()); //this is the problematic "free"
-			// command
-			updateSuccessors();
-		}
-
-		private void updateSuccessors() {
-			freeAndSetSuccessors(ctrl.succ(state));
-		}
+	
 
 		boolean isDeadlock() {
 			return Objects.nonNull(successors) && successors.isZero();
@@ -187,8 +173,8 @@ final class Engine {
 	
 
 	class ReachabilityGame {
-		boolean isReachable(final BDD bpBdd) {
-			List<BDD> reachRoute = computeReachRoute(bpBdd);
+		boolean isReachable(BDD bp) {
+			List<BDD> reachRoute = computeReachRoute(bp);
 			if (isReachRouteValid(reachRoute)) {
 				Env.free(reachRoute);
 				return true;
@@ -200,8 +186,8 @@ final class Engine {
 			return Objects.nonNull(route) && route.size() > 1;
 		}
 
-		List<BDD> computeReachRoute(final BDD bpBDD) {
-			return playReachabilityToBreakpoint(bpBDD);
+		List<BDD> computeReachRoute(BDD bp) {
+			return playReachabilityToBreakpoint(bp);
 		}
 
 		/**
@@ -215,49 +201,43 @@ final class Engine {
 		 * @return a route of states leading to the selected breakpoint from an initial
 		 *         state
 		 */
-		List<BDD> playReachabilityToBreakpoint(final BDD bpBDD) {
+		List<BDD> playReachabilityToBreakpoint(BDD bp) {
 			List<BDD> route = new ArrayList<BDD>();
+			
+			System.out.println("Reachability start");
 
 			// iteration is in reverse because the last layer is the initial state layer
-			final List<BDD> layers = attractorLayers(bpBDD);
+			final List<BDD> layers = attractorLayers(bp.id());
 
-			boolean foundInitial = false;
+			boolean found = false;
 
 			for (int i = layers.size() - 1; i >= 0; i--) {
 				final BDD layer = layers.get(i);
 
 				// choose a random initial state from the ones leading to the target states
-				if (!foundInitial) { // if (i==layers.size()-1){
-					if (!layer.and(fullState.state.id()).equals(Env.FALSE())) {
-						route.add(CoreUtil.satOne(layer.and(fullState.state.id()), Env.globalUnprimeVars()));
-						foundInitial = true;
+				if (!found) { // if (i==layers.size()-1){
+					BDD intersection = layer.and(fullState.state);
+					if (!intersection.isZero()) {
+						route.add(CoreUtil.satOne(intersection, Env.globalUnprimeVars()));
+						found = true;
+						System.out.println("Found intersection");
 					}
+					intersection.free();
 					continue;
 				}
 
-				final BDD prev = route.get(route.size() - 1);
-				final BDD successors = Env.kSucc(prev, ctrl.trans(), 2);
-				final BDDIterator initialIterator = new BDDIterator(layer, Env.globalUnprimeVars());
-				while (initialIterator.hasNext()) {
-					final BDD currentState = initialIterator.next();
-					if (!successors.and(currentState).equals(Env.FALSE())) {
-						route.add(currentState);
-						break;
-					}
+				final BDD last = route.get(route.size() - 1);
+				final BDD successors = ctrl.succ(last);
+								
+				BDD intersection = layer.and(successors);
+				if (!intersection.isZero()) {
+					route.add(CoreUtil.satOne(intersection, Env.globalUnprimeVars()));
+					System.out.println("Adding new item to route");
 				}
+				intersection.free();
 			}
 
-			int subIndex = 0;
-			for (int i = route.size() - 1; i >= 0; i--) {
-				BDD state = route.get(i);
 
-				if (fullState.state.equals(state)) {
-					subIndex = i;
-					break;
-				}
-			}
-
-			route = route.subList(subIndex, route.size());
 			return route;
 		}
 
@@ -271,29 +251,32 @@ final class Engine {
 		 * @param symboliController
 		 * @return
 		 */
-		private List<BDD> attractorLayers(final BDD to) {
-			BDD attractor = Env.FALSE();
-			FixPoint f = new FixPoint(true);
+		private List<BDD> attractorLayers(BDD to) {
+			
+			BDD attractor = to;
+			BDD previousAttractor = attractor.id();
 
 			List<BDD> layers = new ArrayList<BDD>();
-			BDD previousAttractor = Env.FALSE();
+			layers.add(attractor.id());
 
-			while (f.advance(attractor)) {
+			do  {
+				
+				previousAttractor.free();
 				previousAttractor = attractor;
-
-				// compute winning states
-				attractor = to.or(Env.pred(ctrl.trans(), attractor));
-
-				BDD layer = Env.FALSE().or(attractor);
-				// extract to each layer only the new states, that were not in previous layers
-				layer = layer.and(previousAttractor.not());
-				layers.add(layer);
-			}
+				
+				System.out.println("Computing pred");
+	
+				BDD curr = ctrl.pred(previousAttractor);
+				attractor = attractor.or(curr);
+				
+				layers.add(curr.and(previousAttractor.not()));
+				
+				curr.free();
+				
+			} while (!attractor.equals(previousAttractor));
 
 			// last layer is always FALSE
-			if (layers.get(layers.size() - 1).equals(Env.FALSE())) {
-				layers.remove(layers.size() - 1);
-			}
+			layers.remove(layers.size()-1);
 
 			return layers;
 		}
@@ -316,8 +299,8 @@ final class Engine {
 		 * @return A random assignment of the specified variables which satisfies the
 		 *         specified bdd.
 		 */
-		static BDD randomSat(BDD successors, BDD variables) {
-			if (successors.isZero()) {
+		static BDD randomSat(BDD bdd, BDD variables) {
+			if (bdd.isZero()) {
 				return Env.FALSE();
 			}
 			// now we are sure we have a non trivially FALSE BDD
@@ -328,16 +311,16 @@ final class Engine {
 					boolean randChoice = ThreadLocalRandom.current().nextBoolean();
 					BDD satCheck;
 					if (randChoice) {
-						satCheck = successors.and(satRes).andWith(successors.getFactory().ithVar(i));
+						satCheck = bdd.and(satRes).andWith(bdd.getFactory().ithVar(i));
 					} else {
-						satCheck = successors.and(satRes).andWith(successors.getFactory().nithVar(i));
+						satCheck = bdd.and(satRes).andWith(bdd.getFactory().nithVar(i));
 					}
 					if (!satCheck.isZero()) {
 						satRes.andWith(
-								randChoice ? successors.getFactory().ithVar(i) : successors.getFactory().nithVar(i));
+								randChoice ? bdd.getFactory().ithVar(i) : bdd.getFactory().nithVar(i));
 					} else {
 						satRes.andWith(
-								randChoice ? successors.getFactory().nithVar(i) : successors.getFactory().ithVar(i));
+								randChoice ? bdd.getFactory().nithVar(i) : bdd.getFactory().ithVar(i));
 					}
 					satCheck.free();
 				}

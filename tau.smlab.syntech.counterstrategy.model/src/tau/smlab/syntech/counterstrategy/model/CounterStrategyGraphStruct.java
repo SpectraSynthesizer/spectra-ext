@@ -29,6 +29,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package tau.smlab.syntech.counterstrategy.model;
 
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -36,6 +37,10 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+
+import net.sf.javabdd.BDD;
+import net.sf.javabdd.BDDDomain;
+import tau.smlab.syntech.jtlv.Env;
 
 public class CounterStrategyGraphStruct {
 	enum CSType {
@@ -419,6 +424,25 @@ public class CounterStrategyGraphStruct {
 		 */
 		public boolean isDisplayed;
 		
+		public BDD bdd;
+		
+		public CSInvariant(BDD newBdd) {
+			bdd = newBdd;
+			var = "";
+			BDDDomain[] doms = bdd.support().getDomains();
+			for (int i = 0; i < doms.length; i++) {
+				for (long i1 = 0; i1 < doms[i].size().longValue(); i1++) {
+					BDD domBDD = doms[i].ithVar(i1);
+					if (!bdd.and(domBDD).isZero()) {
+						// TODO: is using asserts in java problematic in regards to time efficiency? 
+						assert var == "";
+						var = doms[i].getName();
+						val = Env.stringer.elementName(doms[i], new BigInteger("" + i1));
+					}	
+				}
+			}
+		}
+		
 		public CSInvariant(String newVar, String newVal, boolean newIsDisplayed) {
 			var = newVar;
 			val = newVal;
@@ -478,6 +502,7 @@ public class CounterStrategyGraphStruct {
 		 */
 		@Override
 		public CSInvariant clone() {
+			// TODO: do we need to copy the BDD as well?
 			return new CSInvariant(this.var, this.val, this.isDisplayed);
 		}
 	}

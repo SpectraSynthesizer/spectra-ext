@@ -31,6 +31,7 @@ package tau.smlab.syntech.richcontrollerwalker.ui.preferences;
 import org.eclipse.jface.preference.BooleanFieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
 import org.eclipse.jface.preference.IntegerFieldEditor;
+import org.eclipse.jface.preference.RadioGroupFieldEditor;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 
@@ -53,7 +54,7 @@ public class PreferencePage extends FieldEditorPreferencePage implements IWorkbe
 	public PreferencePage() {
 		super(GRID);
 		setPreferenceStore(Activator.getDefault().getPreferenceStore());
-		setDescription("Rich Controller Walker preferences::");
+		setDescription("Rich Controller Walker preferences:");
 	}
 
 	/**
@@ -64,6 +65,7 @@ public class PreferencePage extends FieldEditorPreferencePage implements IWorkbe
 
 	private IntegerFieldEditor alternativeStepCount;
 	private BooleanFieldEditor isLogActive;
+	private RadioGroupFieldEditor controllerType;
 
 	public void createFieldEditors() {
 		alternativeStepCount = new IntegerFieldEditor(PreferenceConstants.ALTERNATIVE_STEP_COUNT,
@@ -74,6 +76,13 @@ public class PreferencePage extends FieldEditorPreferencePage implements IWorkbe
 		isLogActive = new BooleanFieldEditor(PreferenceConstants.LOG_ACTIVE_ON_START, "Create log on startup",
 				getFieldEditorParent());
 		addField(isLogActive);
+		
+		controllerType = new RadioGroupFieldEditor(PreferenceConstants.CONTROLLER_TYPE, "Controller type", 1,
+				new String[][] { { "Just-in-time Symbolic Controller", PreferenceConstants.JITS },
+						{ "Static Symbolic Controller", PreferenceConstants.STATIC } },
+				getFieldEditorParent(), true);
+
+		addField(controllerType);
 	}
 
 	/*
@@ -85,7 +94,7 @@ public class PreferencePage extends FieldEditorPreferencePage implements IWorkbe
 	}
 
 	public static Preferences getPreferences() {
-		return new Preferences(getIsLogActive(), getAlternativeStepCount(),
+		return new Preferences(getIsLogActive(), getAlternativeStepCount(), getUseJitController(),
 				tau.smlab.syntech.ui.preferences.PreferencePage.getBDDPackageSelection(),
 				tau.smlab.syntech.ui.preferences.PreferencePage.getBDDPackageVersionSelection());
 	}
@@ -96,5 +105,9 @@ public class PreferencePage extends FieldEditorPreferencePage implements IWorkbe
 
 	public static boolean getIsLogActive() {
 		return Activator.getDefault().getPreferenceStore().getBoolean(PreferenceConstants.LOG_ACTIVE_ON_START);
+	}
+	
+	public static boolean getUseJitController() {
+		return PreferenceConstants.JITS.equals(Activator.getDefault().getPreferenceStore().getString(PreferenceConstants.CONTROLLER_TYPE));
 	}
 }

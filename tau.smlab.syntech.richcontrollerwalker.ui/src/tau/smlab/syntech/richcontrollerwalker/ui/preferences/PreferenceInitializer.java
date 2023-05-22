@@ -32,7 +32,6 @@ import org.eclipse.core.runtime.preferences.AbstractPreferenceInitializer;
 import org.eclipse.jface.preference.IPreferenceStore;
 
 import tau.smlab.syntech.richcontrollerwalker.ui.Activator;
-import tau.smlab.syntech.richcontrollerwalker.ui.preferences.PreferenceConstants;
 
 /**
  * Class used to initialize default preference values.
@@ -49,6 +48,7 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
 		IPreferenceStore store = Activator.getDefault().getPreferenceStore();
 		store.setDefault(PreferenceConstants.ALTERNATIVE_STEP_COUNT, 100);
 		store.setDefault(PreferenceConstants.LOG_ACTIVE_ON_START, true);
+		store.setDefault(PreferenceConstants.CONTROLLER_TYPE, PreferenceConstants.JITS);
 	}
 
 }

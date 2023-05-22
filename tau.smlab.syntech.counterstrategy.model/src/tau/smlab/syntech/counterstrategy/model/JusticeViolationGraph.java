@@ -58,6 +58,7 @@ import tau.smlab.syntech.gamemodel.PlayerModule;
 import tau.smlab.syntech.games.rabin.RabinGame;
 import tau.smlab.syntech.jtlv.CoreUtil;
 import tau.smlab.syntech.jtlv.Env;
+import tau.smlab.syntech.jtlv.env.module.ModuleBDDField;
 import tau.smlab.syntech.jtlv.lib.FixPoint;
 import tau.smlab.syntech.spectragameinput.translator.Tracer;
 
@@ -96,14 +97,16 @@ public class JusticeViolationGraph {
 	Vector<BDD> memZ; // The Z intermediate results of the Rabin game solution
 	Vector<Vector<Vector<BDD>>> memX; // The X intermediate results of the Rabin game solution
 	BDD ini; // The input initial states
-	Vector<BehaviorInfo> safeties; // safeties of the system
+	Vector<BehaviorInfo> negatedSafeties; // safeties of the system
 	BDD safetiesBDD; // states violating system safety
 	BDD aux; // Auxiliary system safeties (i.e., safeties added during translation of specification)
 	PlayerModule env;
 	PlayerModule sys;
 	List<BehaviorInfo> sysBehaviorInfo;
 	List<BehaviorInfo> envBehaviorInfo;
+	List<BehaviorInfo> auxBehaviorInfo;
 	HashSet<String> auxVars; // Auxiliary variables, provided for the JVTS tool GUI
+	BDDVarSet auxVarsSet; // Auxiliary variables as a BDDVrSet
 	boolean calcAssumpGraph; // Indicating if Assumption Satisfaction Sub-graph should be computed for each JVTS cycle node
 	
 	/**
@@ -503,10 +506,11 @@ public class JusticeViolationGraph {
 		this.nodes = new HashMap<Integer, JVGNode>();
 		this.edges = new HashMap<Integer, Vector<JVGEdge>>();
 		this.ini = rg.getInitialStates().id();
-		this.safeties = getSafeties(model.getSysBehaviorInfo(), false);
-		this.aux = conjunct(getSafeties(model.getSysBehaviorInfo(), true)).and(sys.getDoms());
+		this.negatedSafeties = getSafeties(model.getSysBehaviorInfo(), false, true);
+		this.aux = conjunct(getSafeties(model.getSysBehaviorInfo(), true, false)).and(sys.getDoms());
 		this.sysBehaviorInfo =  model.getSysBehaviorInfo();
 		this.envBehaviorInfo = model.getEnvBehaviorInfo();
+		this.auxBehaviorInfo= model.getAuxBehaviorInfo();
 		// Note - the actual safeties in the info.safeties can contain both unprimed and primed
 		// variables, so they cannot be considered as states, but rather as transitions.
 		// safetiesBDD should represent the unsafe states only, not the safe states which can lead to unsafe states
@@ -540,8 +544,10 @@ public class JusticeViolationGraph {
 		
 		// collecting the aux variables, to be used when displaying to the user in the GUI
 		this.auxVars = new HashSet<String>();
+		this.auxVarsSet = Env.getEmptySet();
 		for (int i = 0; i < this.sys.getAuxFields().size(); i++) {
 			auxVars.add(sys.getAuxFields().get(i).getName());
+			auxVarsSet.unionWith(sys.getAuxFields().get(i).support().id());
 		}
 		
 	}
@@ -551,7 +557,7 @@ public class JusticeViolationGraph {
 	 * @param safeties A vector of BehaviorInfo containing the safeties
 	 * @return The conjunction of all safeties
 	 */
-	private BDD conjunct(Vector<BehaviorInfo> safeties) {
+	public BDD conjunct(Vector<BehaviorInfo> safeties) {
 		BDD conj = Env.TRUE();
 		for (BehaviorInfo i : safeties) {
 			conj.andWith(i.safety.id());
@@ -561,21 +567,21 @@ public class JusticeViolationGraph {
 
 	/**
 	 * Getting the safeties of the system. In the case of aux being True, getting the auxiliary safeties only.
-	 * If aux is false, getting the negation of the non-auxiliary safeties only (since we will need for 
+	 * If aux is false and negateSysSafe, getting the negation of the non-auxiliary safeties only (since we will need for 
 	 * non-auxiliary safeties the violation of the safeties).
 	 * @param sysBehaviorInfo The system BehaviorInfo
 	 * @param aux Flag indicating if auxiliary safeties should be collected or not
 	 * @return A vector of BehaviorInfo of the system safeties, according to the passed aux flag.
 	 */
-	private Vector<BehaviorInfo> getSafeties(List<BehaviorInfo> sysBehaviorInfo, boolean aux) {
+	public Vector<BehaviorInfo> getSafeties(List<BehaviorInfo> sysBehaviorInfo, boolean aux, boolean negateSysSafe) {
 		Vector<BehaviorInfo> safeties = new Vector<>();
 		for (BehaviorInfo bi : sysBehaviorInfo) {
 			if (bi.isSafety() && bi.aux == aux) {
 				BehaviorInfo c = new BehaviorInfo();
 				c.traceId = bi.traceId;
-				// BDD in BehaviorInfo for safety is the actual safety, not its violation. We want the violation of it
+				// BDD in BehaviorInfo for safety is the actual safety, not its violation. We might want the violation of it
 				// for non aux safeties in order to determine if a node can force to violate a safety.
-				c.safety = aux ? bi.safety.id() : bi.safety.not();
+				c.safety = (negateSysSafe && !aux) ? bi.safety.not() : bi.safety.id();
 				safeties.add(c);
 			}
 		}
@@ -587,7 +593,7 @@ public class JusticeViolationGraph {
 	 * The ini BDD in this implementation could be non deterministically chosen.
 	 */
 	public void calcRankingGraph() {
-		RankingGraph graph = calcRankingGraphHelper(ini, safeties, aux);
+		RankingGraph graph = calcRankingGraphHelper(ini, negatedSafeties, aux);
 		printRankingGraph(graph);
 		freeRankingGraph(graph);
 	}
@@ -952,7 +958,7 @@ public class JusticeViolationGraph {
 			iniNode.nodeBDD = iniEnvChoice.and(ini);
 			iniNode.zRankNum = -1;
 			iniNode.transitions = iniEnvChoice.id();
-			iniNode.violatedSafeties = getViolatedSafetiesRG(iniNode.nodeBDD, safeties, aux);
+			iniNode.violatedSafeties = getViolatedSafetiesRG(iniNode.nodeBDD, negatedSafeties, aux);
 			iniNode.isSafeyViolated = isSafetyViolatedRG(iniNode.nodeBDD);
 			iniNode.isOnlySafetyViolated = isOnlySafetyViolatedRG(iniNode.nodeBDD);
 			nodes.put(0, iniNode);
@@ -963,7 +969,7 @@ public class JusticeViolationGraph {
 			attrNode.zRankNum = 0;
 			attrNode.transitions = Env.FALSE();
 			attrNode.violatedJusticeNum = attrNode.zRankNum % sys.justiceNum();
-			attrNode.violatedSafeties = getViolatedSafetiesRG(iniNode.nodeBDD, safeties, aux);
+			attrNode.violatedSafeties = getViolatedSafetiesRG(iniNode.nodeBDD, negatedSafeties, aux);
 			attrNode.isSafeyViolated = isSafetyViolatedRG(attrNode.nodeBDD);
 			attrNode.isOnlySafetyViolated = isOnlySafetyViolatedRG(attrNode.nodeBDD);
 			nodes.put(1, attrNode);
@@ -999,7 +1005,7 @@ public class JusticeViolationGraph {
 		}
 		
 		// Compute the Ranking Graph
-		RankingGraph rankGraph = calcRankingGraphHelper(ini, safeties, aux);
+		RankingGraph rankGraph = calcRankingGraphHelper(ini, negatedSafeties, aux);
 		log.info("ranking graph: ");
 		printRankingGraph(rankGraph);
 		log.info("ranking graph - end");
@@ -1062,6 +1068,7 @@ public class JusticeViolationGraph {
 		try {
 			this.env.addVar(ASSUMPTION_RANK, 0,env.justiceNum()-1, true /*aux*/);
 			auxVars.add(ASSUMPTION_RANK);
+			auxVarsSet.unionWith(Env.getVar(ASSUMPTION_RANK).support().id());
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			log.severe("ERROR - can't add aux variables for tracking assumptions");
@@ -1174,7 +1181,7 @@ public class JusticeViolationGraph {
 		initNode.zRankNum = -1;
 		initNode.nodeBDD = toCheck;
 		initNode.transitions = toCheck.id();
-		initNode.violatedSafeties = getViolatedSafetiesRG(initNode.nodeBDD, safeties, aux);
+		initNode.violatedSafeties = getViolatedSafetiesRG(initNode.nodeBDD, negatedSafeties, aux);
 		initNode.isSafeyViolated = isSafetyViolatedRG(initNode.nodeBDD);
 		initNode.isOnlySafetyViolated = isOnlySafetyViolatedRG(initNode.nodeBDD);		
 		nodes.put(0, initNode);
@@ -1296,7 +1303,7 @@ public class JusticeViolationGraph {
 	 * 5. Compute the JVG cycle-node
 	 * 6. [Optional] Compute the JVG cycle-node sub-graph of Assumption Satisfaction
 	 * 7. Compute the JVG attractor-to-cycle node
-	 * 8. Compute the JVG attractor-to-cycle node
+	 * 8. Compute the JVG attractor-from-cycle node
 	 * 9. Add the new JVG nodes to the JVG
 	 * @param nodeToHandle The process node to handle
 	 * @param rankGraph The entire Ranking graph
@@ -2248,7 +2255,7 @@ public class JusticeViolationGraph {
 			attractorToNode.zRankNum = nodeToHandle.zRank;
 			attractorToNode.violatedJusticeNum = attractorToNode.zRankNum % sys.justiceNum();
 			attractorToNode.violatedSafeties = getViolatedSafetiesRG(
-					attractorToNode.nodeBDD, safeties, aux);
+					attractorToNode.nodeBDD, negatedSafeties, aux);
 			attractorToNode.isSafeyViolated = isSafetyViolatedRG(attractorToNode.nodeBDD);
 			attractorToNode.isOnlySafetyViolated = isOnlySafetyViolatedRG(attractorToNode.nodeBDD);
 			attractorToNode.transitions = 
@@ -2266,7 +2273,7 @@ public class JusticeViolationGraph {
 			cycleNode.zRankNum = nodeToHandle.zRank;
 			cycleNode.violatedJusticeNum = cycleNode.zRankNum % sys.justiceNum();
 			cycleNode.violatedSafeties = getViolatedSafetiesRG(
-					cycleNode.nodeBDD, safeties, aux);
+					cycleNode.nodeBDD, negatedSafeties, aux);
 			cycleNode.isSafeyViolated = isSafetyViolatedRG(cycleNode.nodeBDD);
 			cycleNode.isOnlySafetyViolated = isOnlySafetyViolatedRG(cycleNode.nodeBDD);
 			cycleNode.transitions = 
@@ -2286,7 +2293,7 @@ public class JusticeViolationGraph {
 			attractorFromNode.zRankNum = nodeToHandle.zRank;
 			attractorFromNode.violatedJusticeNum = attractorFromNode.zRankNum % sys.justiceNum();
 			attractorFromNode.violatedSafeties = getViolatedSafetiesRG(
-					attractorFromNode.nodeBDD, safeties, aux);
+					attractorFromNode.nodeBDD, negatedSafeties, aux);
 			attractorFromNode.isSafeyViolated = isSafetyViolatedRG(attractorFromNode.nodeBDD);
 			attractorFromNode.isOnlySafetyViolated = isOnlySafetyViolatedRG(attractorFromNode.nodeBDD);
 			attractorFromNode.transitions = 
@@ -2351,6 +2358,7 @@ public class JusticeViolationGraph {
 					edge.destInd = jvgInds.get(i);
 					edge.type = JVGEdgeType.UNKNOWN_EDGE;
 					// TODO - the edge.bdd can be updated here if needed.
+					edge.transBDD = succ;
 					if (!edges.containsKey(prevNodeInd)) {
 						Vector<JVGEdge> edgesVec = new Vector<JVGEdge>();
 						edges.put(prevNodeInd, edgesVec);
@@ -3560,6 +3568,30 @@ public class JusticeViolationGraph {
 	public HashMap<Integer, Vector<JVGEdge>> getEdges() {
 		return edges;
 	}
-	
+
+	public BDDVarSet getAuxVars() {  
+		BDDVarSet aux_vars = Env.getEmptySet();
+		for (ModuleBDDField aux_f : sys.getAuxFields()) {
+			aux_vars.unionWith(aux_f.support().id());
+			aux_vars.unionWith(aux_f.prime().support().id());
+		}
+		return aux_vars;
+	}
+
+	public List<BehaviorInfo> getEnvBehaviorInfo() {
+		return envBehaviorInfo;
+	}
+
+	public List<BehaviorInfo> getSysBehaviorInfo() {
+		return sysBehaviorInfo;
+	}
+
+	public List<BehaviorInfo> getAuxBehaviorInfo() {
+		return auxBehaviorInfo;
+	}
+
+	public BDDVarSet getAuxVarsSet() {
+		return auxVarsSet;
+	}
 }
  

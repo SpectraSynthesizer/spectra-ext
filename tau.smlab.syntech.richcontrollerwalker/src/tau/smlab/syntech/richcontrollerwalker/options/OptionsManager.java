@@ -46,17 +46,16 @@ import tau.smlab.syntech.richcontrollerwalker.util.OptionsType;
 import tau.smlab.syntech.richcontrollerwalker.util.SelectionMethod;
 
 public class OptionsManager {
-	private final IAllSteps allSteps = new AllSteps();
-	private final Collection<Integer> filteredStepIds = new ArrayList<>();
+	private final IAllSteps allSteps;
 	private final IInclusions inclusions = new Inclusions();
 	private final IFilter filter = new Filter();
-	private Mod turn;
 	private SelectionMethod selectionMethod = SelectionMethod.ONLY_STEPS;
 	private final Map<IVar, IValue> fixedVars = new HashMap<>();
 	private final Collection<IVar> dontCares = new ArrayList<>();
 
 	public OptionsManager(int maxNumDisplayedOptions) {
 		DisplayedOptions.maxNumDisplayedOptions = maxNumDisplayedOptions;
+		allSteps = new AllSteps(500);
 	}
 
 	public SelectionMethod getSelectionMethod() {
@@ -78,7 +77,6 @@ public class OptionsManager {
 
 	private void clearComputations() {
 		freeInclusions();
-		clearFilteredSteps();
 		clearClassifications();
 	}
 
@@ -93,10 +91,6 @@ public class OptionsManager {
 	private void clearClassifications() {
 		fixedVars.clear();
 		dontCares.clear();
-	}
-
-	private void clearFilteredSteps() {
-		filteredStepIds.clear();
 	}
 
 	public void removeAllFilters(boolean recomputeOptions) {
@@ -128,37 +122,21 @@ public class OptionsManager {
 
 	public void prepareNewOptions(BDD successors, Mod newTurn) {
 		reset();
-		turn = newTurn;
 		allSteps.setNew(successors, BddUtil.getVarsByModule(newTurn));
+		allSteps.loadSteps();
 		filterAndClassify();
 	}
 
 	private void filterAndClassify() {
 		clearComputations();
 		classifyVars();
-		applyFilters();
 		if (selectionMethod.involvesInclusions()) {
 			computeInclusions();
 		}
 	}
 
-	
-	private void applyFilters() {
-		filterSteps();
-		classifyVars();
-	}
-
 	private void classifyVars() {
 		// TODO: implement this
-	}
-
-	private void filterSteps() {
-		clearFilteredSteps();
-		for (IStep step : allSteps) {
-			if (filter.isSatisfying(step)) {
-				filteredStepIds.add(step.getId());
-			}
-		}
 	}
 	
 	private void computeInclusions() {
@@ -168,10 +146,10 @@ public class OptionsManager {
 	public DisplayedOptions getDisplayedOptions() {
 		switch (selectionMethod) {
 		case ONLY_STEPS:
-			return new DisplayedOptions(allSteps, filteredStepIds, fixedVars, dontCares);
+			return new DisplayedOptions(allSteps, filter, fixedVars, dontCares);
 		case INCLUSIONS_THEN_STEPS:
 		case ONLY_INCLUSIONS:
-			return new DisplayedOptions(inclusions.getCollection(), OptionsType.INCLUSIONS, fixedVars, dontCares);
+			return new DisplayedOptions(inclusions.getCollection(), null, null, OptionsType.INCLUSIONS, fixedVars, dontCares);
 		default:
 			throw new IllegalArgumentException("Unexpected value: " + selectionMethod);
 		}

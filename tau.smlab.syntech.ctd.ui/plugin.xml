@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   
+   <extension
+         point="org.eclipse.ui.menus">
+      <menuContribution
+            allPopups="false"
+            locationURI="popup:tau.smlab.syntech.ui.syntechaddonsmenu">
+         <menu
+               label="Systematic Exploration">
+    		<dynamic 
+              class="tau.smlab.syntech.ctd.ui.CTDMenu"
+              id="tau.smlab.syntech.ctd.ui.CTDMenu"
+              >
+    		</dynamic> 
+         </menu>
+      </menuContribution>
+   </extension>
+   <extension
+     point="org.eclipse.ui.preferencePages">
+      <page
+      		category="tau.smlab.syntech.ui.preferences.PreferencePage"
+            class="tau.smlab.syntech.ctd.ui.preferences.PreferencePage"
+            id="tau.smlab.syntech.ctd.ui.preferences.PreferencePage"
+            name="Systematic Exploration">
+      </page>
+</extension>
+ <extension
+       point="org.eclipse.core.runtime.preferences">
+    <initializer
+          class="tau.smlab.syntech.ctd.ui.preferences.PreferenceInitializer">
+    </initializer>
+ </extension>
+</plugin>

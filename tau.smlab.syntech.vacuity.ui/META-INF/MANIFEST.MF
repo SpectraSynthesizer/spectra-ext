@@ -19,6 +19,9 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.emf.ecore,
  org.eclipse.xtext,
  tau.smlab.syntech.checks,
- tau.smlab.syntech.bddgenerator
+ tau.smlab.syntech.bddgenerator,
+ org.eclipse.text
 Automatic-Module-Name: tau.smlab.syntech.vacuity.ui
 Bundle-ActivationPolicy: lazy
+Import-Package: org.eclipse.ui.texteditor,
+ tau.smlab.syntech.spectra

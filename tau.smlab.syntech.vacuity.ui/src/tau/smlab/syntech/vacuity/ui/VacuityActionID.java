@@ -37,6 +37,7 @@ import tau.smlab.syntech.ui.extension.ActionID;
  */
 
 public enum VacuityActionID implements ActionID {
+	CHECK_SINGLE_ITEM("Check Selected Item for Vacuity"),
 	CHECK_SATISFIABILITY("Check Satsifiability"),
 	ENV_REDUNDANT_VALS("Find Environment Redundant Values"),
 	SYS_REDUNDANT_VALS("Find System Redundant Values"),

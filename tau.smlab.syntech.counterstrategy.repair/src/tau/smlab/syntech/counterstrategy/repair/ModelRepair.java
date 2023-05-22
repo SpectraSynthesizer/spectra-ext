@@ -38,7 +38,6 @@ package tau.smlab.syntech.counterstrategy.repair;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-
 import net.sf.javabdd.BDD;
 import tau.smlab.syntech.counterstrategy.model.JusticeViolationGraph;
 import tau.smlab.syntech.counterstrategy.model.JVGEdge;
@@ -55,7 +54,6 @@ import tau.smlab.syntech.jtlv.Env;
 import tau.smlab.syntech.repair.AbstractRepair;
 import tau.smlab.syntech.repair.BasicAssumption;
 import tau.smlab.syntech.repair.BasicAssumption.Kind;
-import tau.smlab.syntech.counterstrategy.repair.SupportMethods;
 
 public abstract class ModelRepair extends AbstractRepair {
 	private boolean isRealizable;
@@ -167,7 +165,7 @@ public abstract class ModelRepair extends AbstractRepair {
 	 * to be filled by inheriting classes - the search
 	 */
 	protected abstract void applySearch();
-
+	
 	/**
 	 *
 	 * Find all assumptions from the current JVTS graph
@@ -175,6 +173,7 @@ public abstract class ModelRepair extends AbstractRepair {
 	 * @return A list of assumptions
 	 */
 	protected List<BasicAssumption> assumptionFinderOneLevel(JusticeViolationGraph csg) {
+		
 		// only top level for now
 		List<BasicAssumption> extraction = new ArrayList<BasicAssumption>();
 

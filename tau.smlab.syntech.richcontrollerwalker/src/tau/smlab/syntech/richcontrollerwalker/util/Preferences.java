@@ -48,18 +48,24 @@ public class Preferences {
 	}
 
 	private final boolean isLogActive;
+	private final boolean useJitController;
 	private final int maxNumDisplayedSteps;
 	private final BddPreferences bddPrefs;
 
-	public Preferences(boolean isLogActive, int stepsBound, BDDPackage bddPackage,
+	public Preferences(boolean isLogActive, int stepsBound, boolean useJitController, BDDPackage bddPackage,
 			BBDPackageVersion bddPackageVersion) {
 		this.maxNumDisplayedSteps = stepsBound;
 		this.isLogActive = isLogActive;
+		this.useJitController = useJitController;
 		this.bddPrefs = new BddPreferences(bddPackage, bddPackageVersion);
 	}
 
 	public boolean isLogActive() {
 		return isLogActive;
+	}
+	
+	public boolean useJitController() {
+		return useJitController;
 	}
 
 	public int getMaxNumDisplayedSteps() {
