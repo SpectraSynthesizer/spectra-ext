@@ -28,16 +28,10 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package tau.smlab.syntech.cores.domainagnostic;
 
-/**
- * Abstract QuickXplain algorithm implemented by Roee Sinai for testing of unrealizable cores algorithms
- * This is a domain-agnostic local minimizer like ddmin and LinearMin
- * 
- * @author Roee Sinai
- */
-
-import tau.smlab.syntech.cores.interfaces.MonotonicCheckMinimizer;
 import java.util.ArrayList;
 import java.util.List;
+
+import tau.smlab.syntech.checks.ddmin.MonotonicCheckMinimizer;
 
 public abstract class AbstractQuickXplain<T> extends MonotonicCheckMinimizer<T> {
 	public List<T> minimize(List<T> analyzed) {

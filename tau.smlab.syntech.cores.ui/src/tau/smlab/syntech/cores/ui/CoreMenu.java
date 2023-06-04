@@ -44,6 +44,7 @@ import org.eclipse.ui.PlatformUI;
 
 import tau.smlab.syntech.bddgenerator.BDDGenerator;
 import tau.smlab.syntech.bddgenerator.BDDGenerator.TraceInfo;
+import tau.smlab.syntech.checks.ddmin.AbstractDdmin;
 import tau.smlab.syntech.gameinput.model.GameInput;
 import tau.smlab.syntech.gameinputtrans.TranslationProvider;
 import tau.smlab.syntech.gamemodel.BehaviorInfo;
@@ -66,7 +67,6 @@ import tau.smlab.syntech.cores.AllCoresPunchAlgorithm;
 import tau.smlab.syntech.cores.AllUnrealizebleCores;
 import tau.smlab.syntech.cores.DdminUnrealizableVarsCore;
 import tau.smlab.syntech.cores.QuickCore;
-import tau.smlab.syntech.cores.domainagnostic.AbstractDdmin;
 import tau.smlab.syntech.cores.util.Checker;
 import tau.smlab.syntech.cores.util.CoreOutput;
 import tau.smlab.syntech.cores.util.RealizabilityCheck;

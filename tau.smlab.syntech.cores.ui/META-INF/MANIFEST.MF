@@ -10,7 +10,8 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.emf.ecore;bundle-version="2.13.0",
  tau.smlab.syntech.games;bundle-version="1.0.0",
  tau.smlab.syntech.gamemodel,
- tau.smlab.syntech.cores
+ tau.smlab.syntech.cores,
+ tau.smlab.syntech.checks;bundle-version="1.0.0"
 Automatic-Module-Name: tau.smlab.syntech.cores.ui
 Bundle-ActivationPolicy: lazy
 Import-Package: org.eclipse.core.resources,

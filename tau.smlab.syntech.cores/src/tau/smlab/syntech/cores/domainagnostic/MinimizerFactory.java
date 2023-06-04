@@ -29,7 +29,9 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package tau.smlab.syntech.cores.domainagnostic;
 
 import java.util.List;
-import tau.smlab.syntech.cores.interfaces.Minimizer;
+
+import tau.smlab.syntech.checks.ddmin.AbstractDdmin;
+import tau.smlab.syntech.checks.ddmin.Minimizer;
 import tau.smlab.syntech.cores.util.Checker;
 
 /**
