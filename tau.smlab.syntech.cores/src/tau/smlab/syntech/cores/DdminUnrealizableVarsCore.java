@@ -31,7 +31,7 @@ package tau.smlab.syntech.cores;
 import java.util.ArrayList;
 import java.util.List;
 
-import tau.smlab.syntech.cores.domainagnostic.AbstractDdmin;
+import tau.smlab.syntech.checks.ddmin.AbstractDdmin;
 import tau.smlab.syntech.cores.util.RealizabilityCheck;
 import tau.smlab.syntech.gamemodel.GameModel;
 import tau.smlab.syntech.gamemodel.util.GameBuilderUtil;

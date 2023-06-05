@@ -31,9 +31,9 @@ package tau.smlab.syntech.cores;
 import java.util.ArrayList;
 import java.util.List;
 
+import tau.smlab.syntech.checks.ddmin.Minimizer;
 import tau.smlab.syntech.cores.domainagnostic.MinimizerFactory;
 import tau.smlab.syntech.cores.domainagnostic.MinimizerType;
-import tau.smlab.syntech.cores.interfaces.Minimizer;
 import tau.smlab.syntech.cores.util.Checker;
 import tau.smlab.syntech.gamemodel.GameModel;
 import tau.smlab.syntech.gamemodel.util.EnvTraceInfoBuilder;

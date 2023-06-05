@@ -31,7 +31,7 @@ package tau.smlab.syntech.cores.domainagnostic;
 import java.util.ArrayList;
 import java.util.List;
 
-import tau.smlab.syntech.cores.interfaces.MonotonicCheckMinimizer;
+import tau.smlab.syntech.checks.ddmin.MonotonicCheckMinimizer;
 
 /**
  * Linear minimization - check elements one by one to see if they belong to a local minimum
