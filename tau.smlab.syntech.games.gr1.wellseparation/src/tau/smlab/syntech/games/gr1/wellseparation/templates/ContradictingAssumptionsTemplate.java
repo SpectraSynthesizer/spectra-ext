@@ -39,7 +39,7 @@ import net.sf.javabdd.BDD;
 import net.sf.javabdd.BDDDomain;
 import tau.smlab.syntech.bddgenerator.BDDGenerator;
 import tau.smlab.syntech.bddgenerator.BDDGenerator.TraceInfo;
-import tau.smlab.syntech.cores.domainagnostic.AbstractDdmin;
+import tau.smlab.syntech.checks.ddmin.AbstractDdmin;
 import tau.smlab.syntech.gameinput.model.Constraint;
 import tau.smlab.syntech.gameinput.model.GameInput;
 import tau.smlab.syntech.gameinput.model.Variable;

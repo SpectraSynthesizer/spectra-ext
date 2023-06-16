@@ -7,7 +7,8 @@ Require-Bundle: tau.smlab.syntech.games;bundle-version="1.0.0",
  tau.smlab.syntech.jtlv,
  tau.smlab.syntech.gamemodel;bundle-version="1.0.0",
  tau.smlab.syntech.games.gr1,
- tau.smlab.syntech.cores
+ tau.smlab.syntech.cores,
+ tau.smlab.syntech.checks
 Export-Package: tau.smlab.syntech.games.gr1.wellseparation,
  tau.smlab.syntech.games.gr1.wellseparation.templates
 Automatic-Module-Name: tau.smlab.syntech.games.gr1.wellseparation

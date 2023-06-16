@@ -32,7 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import tau.smlab.syntech.cores.domainagnostic.AbstractDdmin;
+import tau.smlab.syntech.checks.ddmin.AbstractDdmin;
 import tau.smlab.syntech.gamemodel.BehaviorInfo;
 
 /**
