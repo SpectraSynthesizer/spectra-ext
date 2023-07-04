@@ -13,7 +13,7 @@ Require-Bundle: org.eclipse.core.resources,
  tau.smlab.syntech.spectragameinput,
  tau.smlab.syntech.Spectra;bundle-version="1.0.0",
  tau.smlab.syntech.logs;bundle-version="1.0.0",
- org.apache.commons.io;bundle-version="2.2.0"
+ org.apache.commons.commons-io
 Export-Package: tau.smlab.syntech.richcontrollerwalker,
  tau.smlab.syntech.richcontrollerwalker.bdds,
  tau.smlab.syntech.richcontrollerwalker.filters,
