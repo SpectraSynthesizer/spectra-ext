@@ -28,15 +28,21 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package tau.smlab.syntech.richcontrollerwalker.options;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
 import net.sf.javabdd.BDD;
+import net.sf.javabdd.BDDDomain;
+import net.sf.javabdd.BDDVarSet;
+import tau.smlab.syntech.jtlv.Env;
 import tau.smlab.syntech.richcontrollerwalker.bdds.BddUtil;
 import tau.smlab.syntech.richcontrollerwalker.bdds.IValue;
 import tau.smlab.syntech.richcontrollerwalker.bdds.IVar;
+import tau.smlab.syntech.richcontrollerwalker.bdds.VarClassifier;
 import tau.smlab.syntech.richcontrollerwalker.filters.Filter;
 import tau.smlab.syntech.richcontrollerwalker.filters.FilterSummary;
 import tau.smlab.syntech.richcontrollerwalker.filters.FilterType;
@@ -50,8 +56,17 @@ public class OptionsManager {
 	private final IInclusions inclusions = new Inclusions();
 	private final IFilter filter = new Filter();
 	private SelectionMethod selectionMethod = SelectionMethod.ONLY_STEPS;
+	private BDD successors;
+	private Mod currentTurn;
+	private boolean hideFixed = false;
+	private boolean hideDontCares = false;
 	private final Map<IVar, IValue> fixedVars = new HashMap<>();
 	private final Collection<IVar> dontCares = new ArrayList<>();
+	private final Collection<IVar> hidden = new ArrayList<>();
+	private boolean showSatCountInSteps = false;
+
+	private BigInteger filteredCount = BigInteger.ZERO;
+	private BigInteger totalCount = BigInteger.ZERO;
 
 	public OptionsManager(int maxNumDisplayedOptions) {
 		DisplayedOptions.maxNumDisplayedOptions = maxNumDisplayedOptions;
@@ -71,6 +86,7 @@ public class OptionsManager {
 	}
 
 	public void reset() {
+		successors = null;
 		allSteps.clear();
 		clearComputations();
 	}
@@ -83,7 +99,7 @@ public class OptionsManager {
 	public FilterSummary getFilterSummary(FilterType type) {
 		return filter.getFilterSummary(type);
 	}
-	
+
 	private void freeInclusions() {
 		inclusions.clear();
 	}
@@ -104,7 +120,7 @@ public class OptionsManager {
 			filterAndClassify();
 		}
 	}
-	
+
 	public void setFilterActivity(FilterType type, boolean isActive, boolean recomputeOptions) {
 		filter.setActivity(type, isActive);
 		if (recomputeOptions) {
@@ -119,37 +135,100 @@ public class OptionsManager {
 		}
 	}
 
+	public void updateHiddenVariables(Collection<String> hidden, boolean hideFixed, boolean hideDontCares,
+			boolean recomputeOptions) {
+		Map<String, IVar> allVars = BddUtil.getAllVarsMap();
+		this.hidden.clear();
+		this.hidden.addAll(hidden.stream().map(v -> allVars.get(v)).toList());
+		this.hideFixed = hideFixed;
+		this.hideDontCares = hideDontCares;
+		if (recomputeOptions) {
+			filterAndClassify();
+		}
+	}
 
 	public void prepareNewOptions(BDD successors, Mod newTurn) {
 		reset();
-		allSteps.setNew(successors, BddUtil.getVarsByModule(newTurn));
-		allSteps.loadSteps();
+		this.successors = successors.id();
+		this.currentTurn = newTurn;
 		filterAndClassify();
+	}
+
+	public BDDVarSet getHiddenVarSet() {
+		BDDVarSet set = BddUtil.getVarSet(this.hidden);
+
+		if (this.hideFixed) {
+			set.unionWith(BddUtil.getVarSet(this.fixedVars.keySet()));
+		}
+
+		if (this.hideDontCares) {
+			set.unionWith(BddUtil.getVarSet(this.dontCares));
+		}
+
+		return set;
+	}
+
+	public BDDVarSet getUsedVarSet() {
+		BDDVarSet hiddenVars = getHiddenVarSet();
+		BDDVarSet turnVars = getCurrentTurnVars();
+		return turnVars.minus(hiddenVars);
+	}
+
+	public BDD getFilteredSuccessors() {
+		return allSteps.getBdd();
+	}
+
+	private void applyFilters() {
+		BDD filteredSuccessors = successors.and(filter.getBdd());
+
+		classifyVars(filteredSuccessors);
+
+		allSteps.setNew(filteredSuccessors, getUsedVarSet(), getCurrentTurnVars(), showSatCountInSteps);
+		allSteps.loadSteps();
+	}
+
+	private void computeSatCounts() {
+		double totalDouble = Env.getSatCount(successors, getCurrentTurnVars());
+		double filteredDouble = Env.getSatCount(getFilteredSuccessors(), getUsedVarSet());
+
+		// Note: there may be some loss of precision
+		this.totalCount = BigDecimal.valueOf(totalDouble).toBigInteger();
+		this.filteredCount = BigDecimal.valueOf(filteredDouble).toBigInteger();
 	}
 
 	private void filterAndClassify() {
 		clearComputations();
-		classifyVars();
+		applyFilters();
+		computeSatCounts();
 		if (selectionMethod.involvesInclusions()) {
 			computeInclusions();
 		}
 	}
 
-	private void classifyVars() {
-		// TODO: implement this
+	private void classifyDontCares(BDD successors) {
+		dontCares.addAll(VarClassifier.findDontCareVars(successors));
 	}
-	
+
+	private void classifyFixedVars(BDD successors) {
+		fixedVars.putAll(VarClassifier.findFixedVars(successors));
+	}
+
+	private void classifyVars(BDD successors) {
+		classifyDontCares(successors);
+		classifyFixedVars(successors);
+	}
+
 	private void computeInclusions() {
 		// TODO implement this
 	}
-	
+
 	public DisplayedOptions getDisplayedOptions() {
 		switch (selectionMethod) {
 		case ONLY_STEPS:
-			return new DisplayedOptions(allSteps, filter, fixedVars, dontCares);
+			return new DisplayedOptions(allSteps, fixedVars, dontCares);
 		case INCLUSIONS_THEN_STEPS:
 		case ONLY_INCLUSIONS:
-			return new DisplayedOptions(inclusions.getCollection(), null, null, OptionsType.INCLUSIONS, fixedVars, dontCares);
+			return new DisplayedOptions(inclusions.getCollection(), null, OptionsType.INCLUSIONS, fixedVars, dontCares);
 		default:
 			throw new IllegalArgumentException("Unexpected value: " + selectionMethod);
 		}
@@ -169,11 +248,61 @@ public class OptionsManager {
 		return inclusions.getInclusion(incId).getRandomStepId();
 	}
 
+	private boolean hasHiddenVariables() {
+		if (!hidden.isEmpty()) {
+			return true;
+		}
+
+		if (hideFixed && !fixedVars.isEmpty()) {
+			return true;
+		}
+
+		if (hideDontCares && !dontCares.isEmpty()) {
+			return true;
+		}
+
+		return false;
+	}
+
+	private BDDVarSet getCurrentTurnVars() {
+		return BddUtil.getVarsByModule(currentTurn).toVarSet();
+	}
+
 	public BDD getStep(int stepId) {
-		return allSteps.getStep(stepId).getBdd();
+		BDD step = allSteps.getStep(stepId).getBdd();
+		if (!hasHiddenVariables()) {
+			return step;
+		}
+
+		// Get a possible assignment to "fill in" the hidden variables
+		BDD nextState = step.and(successors);
+		BigInteger[] possibleAssignments = nextState.scanAllVar();
+		nextState.free();
+
+		BDDVarSet missingVars = getHiddenVarSet().intersectWith(getCurrentTurnVars());
+		for (BDDDomain dom : missingVars.getDomains()) {
+			step.andWith(dom.ithVar(possibleAssignments[dom.getIndex()]));
+		}
+
+		return step;
 	}
 
 	public void freeFilters() {
 		filter.freeAll();
+	}
+
+	public BigInteger getTotalCount() {
+		return this.totalCount;
+	}
+
+	public BigInteger getFilteredCount() {
+		return this.filteredCount;
+	}
+	
+	public void setShowStepSatCount(boolean showSatCount, boolean recomputeOptions) {
+		showSatCountInSteps = showSatCount;
+		if (recomputeOptions) {
+			filterAndClassify();
+		}
 	}
 }

@@ -28,12 +28,12 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package tau.smlab.syntech.richcontrollerwalker.bdds;
 
-import java.util.Collection;
+import java.util.List;
 
 import tau.smlab.syntech.richcontrollerwalker.util.Mod;
 
 public interface IVar {
 	String name();
-	Collection<String> domain();
+	List<String> domain();
 	Mod module();
 }

@@ -26,29 +26,63 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 */
 
-package tau.smlab.syntech.richcontrollerwalker.options;
+package tau.smlab.syntech.richcontrollerwalker.ui.action;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 import net.sf.javabdd.BDD;
-import net.sf.javabdd.BDDVarSet;
-import tau.smlab.syntech.richcontrollerwalker.bdds.IBdd;
+import tau.smlab.syntech.richcontrollerwalker.bdds.IPersistent;
+import tau.smlab.syntech.richcontrollerwalker.util.Mod;
 
-public interface IAllSteps extends IOptions, IBdd, Iterable<IStep> {
+public interface IVarConfiguration extends IPersistent {
+	int DEFAULT_ID = 0;
+	String PREFIX = "VAR_CONFIG";
+	String EMPTY_MESSAGE = "<TOO MANY PRESENTATION FILTERS>";
 
 	@Override
-	Collection<IStep> getCollection();
-	
-	@Override
-	default void clear() {
-		IBdd.super.clear();
-		IOptions.super.clear();
+	public default String getPrefix() {
+		return PREFIX;
 	}
 
-	IStep getStep(int stepId);
+	@Override
+	public default int getId() {
+		return DEFAULT_ID;
+	}
 
-	void setNew(BDD successors, BDDVarSet varsToShow, BDDVarSet turnVars, boolean includeSatCount);
+	@Override
+	public default BDD getBdd() {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	default void clear() {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	default boolean isValid() {
+		throw new UnsupportedOperationException();
+	}
+
+	Set<String> getHidden();
+
+	List<String> getVariablesByModule(Mod mod);
+
+	void setHidden(Collection<String> vars);
+
+	void setExpression(String expression);
+
+	void removeAll();
+
+	void setVariables(Mod mod, Collection<String> vars);
 	
-	List<IStep> loadSteps();
+	void resetVariableOrder();
+	
+	boolean getHideFixed();
+	void setHideFixed(boolean value);
+	
+	boolean getHideDontCares();
+	void setHideDontCares(boolean value);
 }

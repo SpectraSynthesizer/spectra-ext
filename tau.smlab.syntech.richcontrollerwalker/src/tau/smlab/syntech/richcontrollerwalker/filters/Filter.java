@@ -36,26 +36,39 @@ import net.sf.javabdd.BDD;
 import tau.smlab.syntech.jtlv.Env;
 import tau.smlab.syntech.richcontrollerwalker.ExpressionHelper;
 import tau.smlab.syntech.richcontrollerwalker.bdds.AbstractPersistent;
-import tau.smlab.syntech.richcontrollerwalker.options.IStep;
 
 public class Filter implements IFilter {
 	private IFilterExp dropdownFilter;
 	private IFilterExp textFilter;
+	private IFilterExp smartFilter;
 
 	public Filter() {
 		loadPersistentFilters();
 	}
 
-	
 	public IFilterExp getFilterExp(FilterType type) {
-		return type.equals(FilterType.DROPDOWN) ? dropdownFilter : textFilter;
+		switch (type) {
+		case DROPDOWN:
+			return dropdownFilter;
+		case TEXT:
+			return textFilter;
+		case SMART:
+			return smartFilter;
+		}
+		
+		throw new IllegalArgumentException();
 	}
 
 	private void setExp(IFilterExp fe, FilterType type) {
-		if (type.equals(FilterType.DROPDOWN)) {
+		switch(type) {
+		case DROPDOWN:
 			dropdownFilter = fe;
-		} else {
+			break;
+		case TEXT:
 			textFilter = fe;
+			break;
+		case SMART:
+			smartFilter = fe;
 		}
 	}
 
@@ -63,6 +76,10 @@ public class Filter implements IFilter {
 		Map<Integer, String> loadedMap = ExpressionHelper.getPersistentPropsByPrefix(IFilterExp.PREFIX);
 		for (Entry<Integer, String> entry : loadedMap.entrySet()) {
 			int id = entry.getKey();
+			if (id == IFilterExp.SMART_ID) {
+				// Never restore the smart filter
+				continue;
+			}
 			if (id != IFilterExp.DROPDOWN_ID && id != IFilterExp.TEXT_ID) {
 				throw new IllegalArgumentException();
 			}
@@ -72,25 +89,19 @@ public class Filter implements IFilter {
 		}
 	}
 
-	@Override
-	public boolean isSatisfying(IStep step) {
-		BDD andResult = combinedBdd().andWith(step.getBdd().id());
-    	boolean isSat = !andResult.equals(Env.FALSE());
-    	andResult.free();
-		return isSat; 
-	}
-	
 	private BDD combinedBdd() {
 		BDD combined = Env.TRUE();
 		if (dropdownFilter != null && dropdownFilter.isValid()) {
-			combined  = dropdownFilter.getBdd().id();
+			combined = dropdownFilter.getBdd().id();
 		}
 		if (textFilter != null && textFilter.isValid()) {
-			combined  = combined.andWith(textFilter.getBdd().id());
+			combined = combined.andWith(textFilter.getBdd().id());
+		}
+		if (smartFilter != null && smartFilter.isValid()) {
+			combined = combined.andWith(smartFilter.getBdd().id());
 		}
 		return combined;
 	}
-	
 
 	@Override
 	public void freeAll() {
@@ -99,6 +110,9 @@ public class Filter implements IFilter {
 		}
 		if (textFilter != null && textFilter.isValid()) {
 			textFilter.clear();
+		}
+		if (smartFilter != null && smartFilter.isValid()) {
+			smartFilter.clear();
 		}
 	}
 
@@ -128,30 +142,33 @@ public class Filter implements IFilter {
 		delFilter(fe);
 		nullifyField(type);
 	}
-	
-	
+
 	private void delFilter(IFilterExp fe) {
 		if (Objects.nonNull(fe)) {
 			fe.clear();
 			fe.unsave();
 		}
 	}
-	
+
 	private void nullifyField(FilterType type) {
-		if (type.equals(FilterType.TEXT)) {
-			textFilter = null;
-		} else {
+		switch(type) {
+		case DROPDOWN:
 			dropdownFilter = null;
+			break;
+		case TEXT:
+			textFilter = null;
+			break;
+		case SMART:
+			smartFilter = null;
 		}
 	}
 
-	
 	@Override
 	public void setActivity(FilterType type, boolean isActive) {
 		IFilterExp fe = getFilterExp(type);
 		if (fe != null) {
 			fe.setActivity(isActive);
-		}	
+		}
 	}
 
 	@Override
@@ -159,11 +176,11 @@ public class Filter implements IFilter {
 		IFilterExp fe = getFilterExp(type);
 		return fe != null && fe.isActive();
 	}
-	
+
 	public static class FilterExp extends AbstractPersistent implements IFilterExp {
 		private boolean active;
 		private final FilterType type;
-		
+
 		public FilterExp(BDD bdd, String exp, FilterType type) {
 			super(bdd, exp, IFilterExp.getTypeId(type));
 			this.type = type;
@@ -178,7 +195,7 @@ public class Filter implements IFilter {
 		public void setActivity(boolean isActive) {
 			active = isActive;
 		}
-		
+
 		@Override
 		public boolean isActive() {
 			return active;
@@ -193,5 +210,10 @@ public class Filter implements IFilter {
 	@Override
 	public FilterSummary getFilterSummary(FilterType type) {
 		return new FilterSummary(getFilterExp(type), type);
+	}
+
+	@Override
+	public BDD getBdd() {
+		return combinedBdd();
 	}
 }

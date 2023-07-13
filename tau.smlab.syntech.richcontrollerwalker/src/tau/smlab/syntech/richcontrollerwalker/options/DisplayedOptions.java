@@ -38,13 +38,11 @@ import java.util.Map;
 
 import tau.smlab.syntech.richcontrollerwalker.bdds.IValue;
 import tau.smlab.syntech.richcontrollerwalker.bdds.IVar;
-import tau.smlab.syntech.richcontrollerwalker.filters.IFilter;
 import tau.smlab.syntech.richcontrollerwalker.util.OptionsType;
 
 public class DisplayedOptions implements IOptionsReply {
 	static int maxNumDisplayedOptions;
 	private final IAllSteps allSteps;
-	private final IFilter filter;
 	private final List<String> allOptions = new ArrayList<>();
 	private final Map<Integer, Integer> idMap = new HashMap<>();
 	private final OptionsType type;
@@ -52,11 +50,10 @@ public class DisplayedOptions implements IOptionsReply {
 	private Collection<String> dontCares = new HashSet<>();
 	private int batchIdx = 0;
 
-	DisplayedOptions(Collection<? extends IOption> optList, IAllSteps allSteps, IFilter filter, OptionsType type, Map<IVar, IValue> fixedVars,
+	DisplayedOptions(Collection<? extends IOption> optList, IAllSteps allSteps, OptionsType type, Map<IVar, IValue> fixedVars,
 			Collection<IVar> dontCareVars) {
 		this.type = type;
 		this.allSteps = allSteps;
-		this.filter = filter;
 		prepareOptions(optList);
 		computeSpecialVars(fixedVars, dontCareVars);
 	}
@@ -78,14 +75,14 @@ public class DisplayedOptions implements IOptionsReply {
 		return dontCares;
 	}
 
-	DisplayedOptions(IAllSteps allSteps, IFilter filter, Map<IVar, IValue> fixedVars,
+	DisplayedOptions(IAllSteps allSteps, Map<IVar, IValue> fixedVars,
 			Collection<IVar> dontCares) {
-		this(filter(allSteps.getCollection(), filter), allSteps, filter, OptionsType.STEPS, fixedVars, dontCares);
+		this(allSteps.getCollection(), allSteps, OptionsType.STEPS, fixedVars, dontCares);
 	}
 	
 	DisplayedOptions(IAllSteps allSteps, Collection<Integer> stepsIds, Map<IVar, IValue> fixedVars,
 			Collection<IVar> dontCares) {
-		this(filter(allSteps, stepsIds), allSteps, null, OptionsType.STEPS, fixedVars, dontCares);
+		this(filter(allSteps, stepsIds), allSteps, OptionsType.STEPS, fixedVars, dontCares);
 	}
 
 	private void computeSpecialVars(Map<IVar, IValue> fixedVars, Collection<IVar> dontCareVars) {
@@ -100,18 +97,6 @@ public class DisplayedOptions implements IOptionsReply {
 	public int getOptId(int localIdx) {
 		Integer index = batchIdx * maxNumDisplayedOptions + localIdx;
 		return idMap.get(index);
-	}
-
-	private static Collection<? extends IOption> filter(Collection<IStep> allSteps, IFilter filter) {
-		
-		Collection<IOption> l = new ArrayList<>();
-		for (IStep step : allSteps) {
-			if (filter.isSatisfying(step)) {
-				l.add(step);
-			}
-		}
-
-		return l;
 	}
 	
 	private static Collection<? extends IOption> filter(IAllSteps allSteps, Collection<Integer> stepsIds) {
@@ -144,10 +129,10 @@ public class DisplayedOptions implements IOptionsReply {
 	public List<String> strList() {
 		int fromIndex = batchIdx * maxNumDisplayedOptions;
 		
-		if (fromIndex + maxNumDisplayedOptions > allOptions.size() && allSteps != null && filter != null) {
+		if (fromIndex + maxNumDisplayedOptions > allOptions.size() && allSteps != null) {
 			System.out.println(String.format("Number of options is %d, loading until %d", allOptions.size(), fromIndex + maxNumDisplayedOptions));
 			List<IStep> newSteps = allSteps.loadSteps();
-			prepareOptions(filter(newSteps, filter));
+			prepareOptions(newSteps);
 		}
 		
 		int toIndex = Math.min(allOptions.size(), fromIndex + maxNumDisplayedOptions);

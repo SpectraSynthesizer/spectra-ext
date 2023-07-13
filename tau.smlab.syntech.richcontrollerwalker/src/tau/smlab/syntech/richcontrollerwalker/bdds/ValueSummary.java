@@ -26,52 +26,19 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 */
 
-package tau.smlab.syntech.richcontrollerwalker.ui.action;
+package tau.smlab.syntech.richcontrollerwalker.bdds;
 
-import java.util.Collection;
-import java.util.Set;
+public class ValueSummary implements IValue {
 
-import net.sf.javabdd.BDD;
-import tau.smlab.syntech.richcontrollerwalker.bdds.IPersistent;
-
-public interface IMask extends IPersistent {
-	int DEFAULT_ID = 0;
-	String PREFIX = "MASK";
-	String EMPTY_MESSAGE = "<TOO MANY PRESENTATION FILTERS>"; 
-
-	@Override
-	public default String getPrefix() {
-		return PREFIX;
-	}
-
-	@Override
-	public default int getId() {
-		return DEFAULT_ID;
-	}
-
-	@Override
-	public default BDD getBdd() {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	default void clear() {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	default boolean isValid() {
-		throw new UnsupportedOperationException();
-	}
-
-	Set<String> getHidden();
+	private String val;
 	
-	String transform(String option);
-
-	void setHidden(Collection<String> vars);
+	public ValueSummary(String s) {
+		this.val = s;
+	}
 	
-	void setExpression(String expression);
-	
-	void removeAll();
+	@Override
+	public String name() {
+		return val;
+	}
 
 }

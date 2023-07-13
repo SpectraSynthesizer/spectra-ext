@@ -29,6 +29,8 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package tau.smlab.syntech.richcontrollerwalker.ui.action;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -74,7 +76,7 @@ public abstract class AbstractDisplayExpHelper implements IDisplayExpHelper {
 		return String.join(outerDelimiter(), pairs);
 	}
 
-	private String expFromPairs(List<IPair> pairs) {
+	public String expFromPairs(List<IPair> pairs) {
 		List<String> pairStrList = new ArrayList<>();
 		for (IPair p : pairs) {
 			pairStrList.add(innerJoin(p.var(), p.val()));
@@ -99,18 +101,23 @@ public abstract class AbstractDisplayExpHelper implements IDisplayExpHelper {
 
 	@Override
 	public String remove(String original, String var) {
+		return removeAll(original, Collections.singletonList(var));
+	}
+
+	public String removeAll(String original, Collection<String> vars) {
 		List<IPair> pairs = getPairs(original);
-		IPair foundPair = getPairByvar(pairs, var);
-		if (foundPair == null) {
+		List<IPair> pairsToRemove = vars.stream().map(var -> getPairByvar(pairs, var)).filter(pair -> pair != null)
+				.toList();
+		if (pairsToRemove.isEmpty()) {
 			return original;
 		}
-		pairs.remove(foundPair);
+		pairs.removeAll(pairsToRemove);
 		return expFromPairs(pairs);
 	}
-	
+
 	private IPair getPairByvar(List<IPair> pairs, String var) {
 		for (Iterator<IPair> iter = pairs.iterator(); iter.hasNext();) {
-			IPair p = iter.next();	
+			IPair p = iter.next();
 			if (p.var().equals(var)) {
 				return p;
 			}
@@ -195,8 +202,6 @@ public abstract class AbstractDisplayExpHelper implements IDisplayExpHelper {
 		public String toString() {
 			return "Pair [var=" + var + ", val=" + val + "]";
 		}
-		
-		
 
 	}
 

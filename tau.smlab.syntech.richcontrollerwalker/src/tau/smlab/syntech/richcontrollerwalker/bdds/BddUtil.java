@@ -40,6 +40,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import net.sf.javabdd.BDD;
+import net.sf.javabdd.BDDVarSet;
 import tau.smlab.syntech.jtlv.Env;
 import tau.smlab.syntech.richcontrollerwalker.util.Mod;
 
@@ -94,6 +95,19 @@ public class BddUtil {
 	public static boolean isValidVar(String varName) {
 		return getAllVarsMap().containsKey(Objects.requireNonNull(varName));
 	}
+	
+	public static BDDVarSet getVarSet(Collection<IVar> vars) {
+		BDDVarSet set = Env.getEmptySet();
+		for (IVar v : vars) {
+			set.unionWith(Env.getVar(v.name()).getDomain().set());
+		}
+		
+		return set;
+	}
+	
+	public static IVar getVarByName(String name) {
+		return Objects.requireNonNull(vars.allMap.get(Objects.requireNonNull(name)));
+	}
 
 	public static final class Vars {
 		private final Map<String, String[]> sysMap;
@@ -115,7 +129,7 @@ public class BddUtil {
 				allMap.put(e.getKey(), new VarSummary(e.getKey(), e.getValue(), Mod.SYS));
 			}
 			for (Entry<String, String[]> e : envMap.entrySet()) {
-				allMap.put(e.getKey(), new VarSummary(e.getKey(), e.getValue(), Mod.SYS));
+				allMap.put(e.getKey(), new VarSummary(e.getKey(), e.getValue(), Mod.ENV));
 			}
 		}
 

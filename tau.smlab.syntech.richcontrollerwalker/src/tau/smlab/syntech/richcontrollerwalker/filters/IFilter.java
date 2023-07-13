@@ -28,11 +28,9 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package tau.smlab.syntech.richcontrollerwalker.filters;
 
-import tau.smlab.syntech.richcontrollerwalker.options.IStep;
+import tau.smlab.syntech.richcontrollerwalker.bdds.IBdd;
 
-public interface IFilter {
-
-	boolean isSatisfying(IStep step);
+public interface IFilter extends IBdd {
 
 	void add(String expression, FilterType type);
 

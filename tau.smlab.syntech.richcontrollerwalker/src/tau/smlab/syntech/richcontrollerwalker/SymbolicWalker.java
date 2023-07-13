@@ -302,5 +302,4 @@ public class SymbolicWalker extends AbstractWalker {
 
 		return prepareAndGetSteps();
 	}
-
 }

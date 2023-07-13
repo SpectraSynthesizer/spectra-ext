@@ -31,8 +31,11 @@ package tau.smlab.syntech.richcontrollerwalker.ui.action;
 import static tau.smlab.syntech.richcontrollerwalker.ui.Activator.PLUGIN_NAME;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.jface.dialogs.IDialogConstants;
@@ -51,7 +54,10 @@ import tau.smlab.syntech.richcontrollerwalker.filters.FilterSummary;
 import tau.smlab.syntech.richcontrollerwalker.filters.FilterType;
 import tau.smlab.syntech.richcontrollerwalker.options.DisplayedOptions;
 import tau.smlab.syntech.richcontrollerwalker.options.IOptionsReply;
+import tau.smlab.syntech.richcontrollerwalker.ui.dialogs.SmartFilterDialog;
 import tau.smlab.syntech.richcontrollerwalker.ui.dialogs.VarsDialog;
+import tau.smlab.syntech.richcontrollerwalker.ui.dialogs.VarsTable.DisplayVar;
+import tau.smlab.syntech.richcontrollerwalker.ui.dialogs.VarsTable.IVarStateChangedListener;
 import tau.smlab.syntech.richcontrollerwalker.ui.dialogs.WalkDialog;
 import tau.smlab.syntech.richcontrollerwalker.ui.preferences.PreferencePage;
 import tau.smlab.syntech.richcontrollerwalker.util.IBreakpoint;
@@ -74,9 +80,10 @@ public class ControllerWalkerAction extends SyntechAction<ControllerWalkerAction
 	public ControllerWalkerActionsID[] getActionItems() {
 		return ControllerWalkerActionsID.values();
 	}
-	
+
 	/**
-	 * We cannot run as a job as we require UI interaction. Must override and return false.
+	 * We cannot run as a job as we require UI interaction. Must override and return
+	 * false.
 	 */
 	@Override
 	protected boolean runAsJob() {
@@ -99,7 +106,7 @@ public class ControllerWalkerAction extends SyntechAction<ControllerWalkerAction
 		WalkDialog dialog = new WalkDialog(shell, "Rich Controller Walker") {
 			private String loadedLogFile;
 			private final DDFilterHelper ddFltrHelper = new DDFilterHelper();
-			protected final IMask mask = new Mask();
+			protected final IVarConfiguration varConfig = new VarConfiguration();
 			DisplayedOptions dispOpts;
 
 			@Override
@@ -147,6 +154,10 @@ public class ControllerWalkerAction extends SyntechAction<ControllerWalkerAction
 				updatePossibleStepsListView();
 				selectStepAtIndex(possibleStepsList.size() > 0 ? 0 : -1);
 			}
+			
+			private void updateVariablesTable() {
+				varsTable.reset(varConfig, dispOpts, sw.getTurn(), true);
+			}
 
 			private void updateUI() {
 				Mode mode = sw.getMode();
@@ -166,6 +177,10 @@ public class ControllerWalkerAction extends SyntechAction<ControllerWalkerAction
 				genLoglabel.setText(sw.isGeneratingLog() ? "Writing log to: " + sw.getLogFileName() : "");
 				genLoglabel.getParent().layout();
 				updateRemoveAllBpsBtn();
+				updateVariablesTable();
+				smartFilterBtn.setEnabled(smartFilterLabel.getText().isEmpty() && sw.getMode().isFree());
+				clearSmartFilterBtn.setEnabled(!smartFilterLabel.getText().isEmpty() && sw.getMode().isFree());
+				smartFilterLabel.setVisible(!smartFilterLabel.getText().isEmpty());
 				if (!sw.getMode().isFree()) {
 					reachabilityBtn.setEnabled(false);
 					setLoadLogBtnText(sw.getMode().isReach() ? "Exit reachability" : "Exit log");
@@ -191,8 +206,10 @@ public class ControllerWalkerAction extends SyntechAction<ControllerWalkerAction
 			private void setPossibleStepsTitle() {
 				Mode mode = sw.getMode();
 				Mod turn = sw.getTurn();
+				BigInteger unfilteredCount = sw.getTotalOptionCount();
+				BigInteger filteredCount = sw.getFilteredOptionCount();
 				if (mode.isFree()) {
-					stepsGrp.setText("Next possible steps for " + turn);
+					stepsGrp.setText("Next possible steps for " + turn + " [" + filteredCount + "/" + unfilteredCount + "]");
 				} else {
 					stepsGrp.setText("Next Guided State");
 				}
@@ -370,14 +387,26 @@ public class ControllerWalkerAction extends SyntechAction<ControllerWalkerAction
 				sw.replaceBreakpoint(bpId, newExpression);
 				updateBreakpoints();
 			}
-			
+
 			protected void updatePossibleStepsListView() {
 				possibleStepsSWT.removeAll();
-				if (possibleStepsList != null) {
+				if (possibleStepsList != null && !possibleStepsList.isEmpty()) {
 					for (String option : possibleStepsList) {
-						possibleStepsSWT.add(mask.transform(option));
+						possibleStepsSWT.add(option);
 					}
+					possibleStepsSWT.setEnabled(true);
+				} else {
+					possibleStepsSWT.add("<No Options Found>");
+					possibleStepsSWT.setEnabled(false);
 				}
+			}
+			
+			private void updateHiddenVariablesAndUI() {
+				IOptionsReply reply = updateHiddenVariables();
+				if (sw.getMode().isFree()) {
+					processAndUpdateOptions(reply);
+				}
+				updateUI();
 			}
 
 			@Override
@@ -386,6 +415,17 @@ public class ControllerWalkerAction extends SyntechAction<ControllerWalkerAction
 					@Override
 					public void widgetSelected(SelectionEvent e) {
 						loadMoreOptions();
+					}
+				});
+				
+				showSatCountBtn.addSelectionListener(new SelectionAdapter() {
+					@Override
+					public void widgetSelected(SelectionEvent e) {
+						IOptionsReply reply = sw.setShowStepSatCount(showSatCountBtn.getSelection());
+						if (sw.getMode().isFree()) {
+							processAndUpdateOptions(reply);
+						}
+						updateUI();
 					}
 				});
 
@@ -403,10 +443,30 @@ public class ControllerWalkerAction extends SyntechAction<ControllerWalkerAction
 					}
 				});
 
-				for (String domainVal : BddUtil.getAllVarsMap().keySet()) {
+				ArrayList<String> varNames = new ArrayList<String>(BddUtil.getAllVarsMap().keySet());
+				varNames.sort(null);
+				for (String domainVal : varNames) {
 					ddVars.add(domainVal);
 				}
 				ddVars.setEnabled(true);
+				
+				hideFixedVariablesBtn.setSelection(varConfig.getHideFixed());
+				hideFixedVariablesBtn.addSelectionListener(new SelectionAdapter() {
+					@Override
+					public void widgetSelected(SelectionEvent e) {
+						varConfig.setHideFixed(hideFixedVariablesBtn.getSelection());
+						updateHiddenVariablesAndUI();
+					}
+				});
+				
+				hideDontCareVariablesBtn.setSelection(varConfig.getHideDontCares());
+				hideDontCareVariablesBtn.addSelectionListener(new SelectionAdapter() {
+					@Override
+					public void widgetSelected(SelectionEvent e) {
+						varConfig.setHideDontCares(hideDontCareVariablesBtn.getSelection());
+						updateHiddenVariablesAndUI();
+					}
+				});
 
 				addFltrBtn.addSelectionListener(new SelectionAdapter() {
 					@Override
@@ -438,6 +498,30 @@ public class ControllerWalkerAction extends SyntechAction<ControllerWalkerAction
 					@Override
 					public void widgetSelected(SelectionEvent e) {
 						handleFilterActionReply(sw.removeFilter(FilterType.DROPDOWN));
+					}
+				});
+				
+				smartFilterBtn.addSelectionListener(new SelectionAdapter() {
+					@Override
+					public void widgetSelected(SelectionEvent e) {
+						SmartFilterDialog dialog = new SmartFilterDialog(shell, sw, varConfig);
+						dialog.open();
+						String smartFilter = dialog.getSelectedFilter();
+						if (smartFilter.isBlank()) {
+							updateUI();
+							return;
+						}
+						smartFilterLabel.setText(smartFilter);
+						handleFilterActionReply(sw.addFilter(smartFilter, FilterType.SMART));
+					}
+				});
+				
+				clearSmartFilterBtn.addSelectionListener(new SelectionAdapter() {
+					@Override
+					public void widgetSelected(SelectionEvent e) {
+						handleFilterActionReply(sw.removeFilter(FilterType.SMART));
+						smartFilterLabel.setText("");
+						updateUI();
 					}
 				});
 
@@ -519,12 +603,12 @@ public class ControllerWalkerAction extends SyntechAction<ControllerWalkerAction
 					@Override
 					public void widgetSelected(SelectionEvent e) {
 						DisplayedOptions DO = sw.getMode().isFree() ? dispOpts : null;
-						VarsDialog vd = new VarsDialog(shell, mask, DO ,sw.getTurn(), sw.getMode().isFree());
+						VarsDialog vd = new VarsDialog(shell, varConfig, DO, sw.getTurn(), sw.getMode().isFree());
 						vd.open();
-						updatePossibleStepsListView();
+						updateHiddenVariablesAndUI();
 					}
 				});
-				
+
 				reachabilityBtn.addSelectionListener(new SelectionAdapter() {
 					@Override
 					public void widgetSelected(SelectionEvent e) {
@@ -553,13 +637,17 @@ public class ControllerWalkerAction extends SyntechAction<ControllerWalkerAction
 						bpTableViewer.refresh();
 						startReachability(bp.getId());
 					}
-		
-					
+
 				});
 
+				updateHiddenVariables();
 				processAndUpdateOptions(sw.getDisplayOptions());
 				updateUI();
 				updateBreakpoints();
+			}
+			
+			private IOptionsReply updateHiddenVariables() {
+				return sw.updateHiddenVariables(varConfig.getHidden(), varConfig.getHideFixed(), varConfig.getHideDontCares());
 			}
 
 			private void handleFilterActionReply(IOptionsReply reply) {
@@ -580,17 +668,33 @@ public class ControllerWalkerAction extends SyntechAction<ControllerWalkerAction
 					ddVals.setEnabled(true);
 				}
 			}
-			
-			
-		};
-		
 
-		
+			@Override
+			protected IVarStateChangedListener getVarStateChangedListener() {
+				return new IVarStateChangedListener() {
+					
+					@Override
+					public void varStateChanged(DisplayVar var) {
+						// Update the set of hidden variables
+						Set<String> hidden = varConfig.getHidden();
+						if (var.getChecked()) {
+							hidden.remove(var.name);
+						} else {
+							hidden.add(var.name);
+						}
+						varConfig.setHidden(hidden);
+						
+						// Update the UI
+						updateHiddenVariablesAndUI();
+					}
+				};
+			}
+
+		};
+
 		dialog.open();
 	}
 
-	
-	
 	private int popupDialog(String title, String message) {
 		MessageBox dialog = new MessageBox(shell, SWT.ICON_QUESTION | SWT.OK | SWT.CANCEL | SWT.CENTER);
 		dialog.setText(title);

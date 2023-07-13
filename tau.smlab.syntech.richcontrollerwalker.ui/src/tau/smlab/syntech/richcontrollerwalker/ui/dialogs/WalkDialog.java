@@ -51,6 +51,7 @@ import org.eclipse.jface.viewers.TextCellEditor;
 import org.eclipse.jface.viewers.ViewerCell;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
+import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.MouseListener;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -61,7 +62,6 @@ import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.RGB;
-import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.FormAttachment;
 import org.eclipse.swt.layout.FormData;
 import org.eclipse.swt.layout.FormLayout;
@@ -83,12 +83,12 @@ import org.eclipse.swt.widgets.Text;
 import org.eclipse.wb.swt.SWTResourceManager;
 
 import tau.smlab.syntech.richcontrollerwalker.bdds.IPersistent;
+import tau.smlab.syntech.richcontrollerwalker.ui.dialogs.VarsTable.IVarStateChangedListener;
 import tau.smlab.syntech.richcontrollerwalker.util.IBreakpoint;
 
 public abstract class WalkDialog extends TitleAreaDialog {
 	private Shell shell;
 	private String dialogTitle;
-
 
 	protected Group stepsGrp;
 	protected Text filterText;
@@ -98,6 +98,7 @@ public abstract class WalkDialog extends TitleAreaDialog {
 	protected List possibleStepsSWT;
 	protected int selectedOptionIndex;
 	protected Button loadMoreStepsBtn;
+	protected Button showSatCountBtn;
 
 	private Label soFar;
 	protected TableViewer consoleTableViewer;
@@ -117,10 +118,17 @@ public abstract class WalkDialog extends TitleAreaDialog {
 	protected Button addFltrBtn;
 	protected Button removeFlterBtn;
 	protected Button clearFltrBtn;
+	
+	protected Button smartFilterBtn;
+	protected Button clearSmartFilterBtn;
+	protected StyledText smartFilterLabel;
+
 	protected Button varsBtn;
+	protected Button hideFixedVariablesBtn;
+	protected Button hideDontCareVariablesBtn;
 
 	protected Label modeLabel;
-	
+
 	protected Button loadLogBtn;
 	protected Button skipToStartBtn;
 	protected Button SkipToEndBtn;
@@ -139,6 +147,8 @@ public abstract class WalkDialog extends TitleAreaDialog {
 	protected java.util.List<IBreakpoint> bpList;
 	protected int lastSelectedBpIndex = -1;
 
+	protected VarsTable varsTable;
+
 	protected WalkDialog(Shell parentShell, String dialogTitle) {
 		super(parentShell);
 		setShellStyle(SWT.MIN | SWT.MAX | SWT.RESIZE);
@@ -146,7 +156,6 @@ public abstract class WalkDialog extends TitleAreaDialog {
 	}
 
 	protected abstract void connectToBackend();
-
 
 	/**
 	 * Returns the initial size of the dialog window that will be opened. The
@@ -156,7 +165,7 @@ public abstract class WalkDialog extends TitleAreaDialog {
 	protected Point getInitialSize() {
 		return new Point(1920, 1080);
 	}
-	
+
 	@Override
 	public void create() {
 		super.create();
@@ -173,9 +182,9 @@ public abstract class WalkDialog extends TitleAreaDialog {
 		});
 		connectToBackend();
 	}
-	
+
 	// Buttons Bar
-	
+
 	@Override
 	protected void createButtonsForButtonBar(Composite parent) {
 		parent.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
@@ -221,7 +230,7 @@ public abstract class WalkDialog extends TitleAreaDialog {
 
 		createStepsComponent(sashForm);
 
-		createBreakpointComponent(sashForm);
+		createRightPanel(sashForm);
 		return body;
 	}
 
@@ -232,9 +241,8 @@ public abstract class WalkDialog extends TitleAreaDialog {
 		return sashForm;
 	}
 
-	
 	// Steps component
-	
+
 	private void createStepsComponent(SashForm sashForm) {
 		Composite stepsComp = new Composite(sashForm, SWT.FILL);
 		stepsComp.setLayout(new GridLayout(1, false));
@@ -276,7 +284,7 @@ public abstract class WalkDialog extends TitleAreaDialog {
 			}
 		});
 		ddVars.setText(CHOOSE_VARIABLE_DEFAULT_STRING);
-		
+
 		ddVals = new ACCombo(topLeftGroup, SWT.DROP_DOWN);
 		FormData fd_values = new FormData();
 		fd_values.top = new FormAttachment(ddVars, 0, SWT.TOP);
@@ -304,7 +312,6 @@ public abstract class WalkDialog extends TitleAreaDialog {
 		fd_removeButton.top = new FormAttachment(ddVars, -2, SWT.TOP);
 		removeFlterBtn.setLayoutData(fd_removeButton);
 		removeFlterBtn.setText("Remove");
-		
 
 		clearFltrBtn = new Button(topLeftGroup, SWT.NONE);
 		FormData fd_btnClear = new FormData();
@@ -314,39 +321,53 @@ public abstract class WalkDialog extends TitleAreaDialog {
 		clearFltrBtn.setLayoutData(fd_btnClear);
 		clearFltrBtn.setText("Clear");
 		
+		smartFilterBtn = new Button(topLeftGroup, SWT.NONE);
+		FormData fd_btnSmartFilter = new FormData();
+		fd_btnSmartFilter.top = new FormAttachment(clearFltrBtn, 0, SWT.TOP);
+		fd_btnSmartFilter.left = new FormAttachment(clearFltrBtn, 10, SWT.RIGHT);
+		fd_btnSmartFilter.width = 100;
+		smartFilterBtn.setLayoutData(fd_btnSmartFilter);
+		smartFilterBtn.setText("Smart Filter");
 		
+		clearSmartFilterBtn = new Button(topLeftGroup, SWT.NONE);
+		FormData fd_btnClearSmartFilter = new FormData();
+		fd_btnClearSmartFilter.top = new FormAttachment(smartFilterBtn, 0, SWT.TOP);
+		fd_btnClearSmartFilter.left = new FormAttachment(smartFilterBtn, 10, SWT.RIGHT);
+		fd_btnClearSmartFilter.width = 150;
+		clearSmartFilterBtn.setLayoutData(fd_btnClearSmartFilter);
+		clearSmartFilterBtn.setText("Clear Smart Filter");
+		
+		smartFilterLabel = new StyledText(topLeftGroup, SWT.READ_ONLY | SWT.H_SCROLL);
+		FormData fd_smartFilterLabel = new FormData();
+		fd_smartFilterLabel.top = new FormAttachment(smartFilterBtn, 6, SWT.BOTTOM);
+		fd_smartFilterLabel.left = new FormAttachment(smartFilterBtn, 6, SWT.LEFT);
+		fd_smartFilterLabel.right = new FormAttachment(smartFilterBtn, 375, SWT.RIGHT);
+		smartFilterLabel.setLayoutData(fd_smartFilterLabel);
+		smartFilterLabel.setAlwaysShowScrollBars(false);
+		smartFilterLabel.setBackground(Display.getCurrent().getSystemColor(SWT.COLOR_TEXT_DISABLED_BACKGROUND));
+
 		ddFilterLabel = new Label(topLeftGroup, SWT.NONE);
 		FormData fd_filterLabel = new FormData();
 		fd_filterLabel.top = new FormAttachment(ddVars, 6);
 		fd_filterLabel.left = new FormAttachment(ddVars, 0, SWT.LEFT);
 		ddFilterLabel.setLayoutData(fd_filterLabel);
-		ddFilterLabel.setText("Dropdown filter: None");	
-		
-	    filterText = new Text(topLeftGroup, SWT.BORDER);
-	    FormData fd_filterText = new FormData();
-	    fd_filterText.right = new FormAttachment(0, 230);
-	    fd_filterText.left = new FormAttachment(0, 5);
-	    fd_filterText.top = new FormAttachment(ddVars, 50, SWT.TOP);
-	    filterText.setLayoutData(fd_filterText);
-	    
-	    textFilterBtn = new Button(topLeftGroup,  SWT.NONE);
+		ddFilterLabel.setText("Dropdown filter: None");
+
+		filterText = new Text(topLeftGroup, SWT.BORDER);
+		FormData fd_filterText = new FormData();
+		fd_filterText.right = new FormAttachment(0, 230);
+		fd_filterText.left = new FormAttachment(0, 5);
+		fd_filterText.top = new FormAttachment(ddVars, 50, SWT.TOP);
+		filterText.setLayoutData(fd_filterText);
+
+		textFilterBtn = new Button(topLeftGroup, SWT.NONE);
 		FormData fd_textFilterBtn = new FormData();
 		fd_textFilterBtn.right = new FormAttachment(0, 320);
 		fd_textFilterBtn.left = new FormAttachment(0, 240);
 		fd_textFilterBtn.top = new FormAttachment(ddVars, 50, SWT.TOP);
 		textFilterBtn.setLayoutData(fd_textFilterBtn);
 		textFilterBtn.setText("Apply");
-		
-		varsBtn = new Button(topLeftGroup, SWT.NONE);
-		FormData fd_btnVars = new FormData();
-		fd_btnVars.right = new FormAttachment(0, 1290);
-		fd_btnVars.left = new FormAttachment(0, 1170);
-		fd_btnVars.top = new FormAttachment(ddVars, -2, SWT.TOP);
-		varsBtn.setLayoutData(fd_btnVars);
-		varsBtn.setText("Variables...");
-		
-		
-		
+
 		modeLabel = new Label(topLeftGroup, SWT.NONE);
 		FormData fd_mode = new FormData();
 		fd_mode.width = 1200;
@@ -355,15 +376,10 @@ public abstract class WalkDialog extends TitleAreaDialog {
 		modeLabel.setLayoutData(fd_mode);
 		FontData[] fDModeLbl = modeLabel.getFont().getFontData();
 		fDModeLbl[0].setHeight(10);
-		modeLabel.setFont( new Font(null,fDModeLbl[0]));
-
-		
-
-
+		modeLabel.setFont(new Font(null, fDModeLbl[0]));
 	}
-	
-protected abstract void selectedVariablesCombo();
 
+	protected abstract void selectedVariablesCombo();
 
 	private void createStepsGroup(Composite parent) {
 		stepsGrp = new Group(parent, SWT.NONE);
@@ -376,10 +392,15 @@ protected abstract void selectedVariablesCombo();
 
 		createPossibleStepsList(stepsGrp);
 		possibleStepsLabel = new Label(stepsGrp, SWT.LEFT);
-
+		
 		loadMoreStepsBtn = new Button(stepsGrp, SWT.NONE);
 		loadMoreStepsBtn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
 		loadMoreStepsBtn.setText("Load More Steps");
+		
+		showSatCountBtn = new Button(stepsGrp, SWT.CHECK | SWT.CENTER);
+		showSatCountBtn.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
+		showSatCountBtn.setSelection(false);
+		showSatCountBtn.setText("Show SAT Count");
 
 		soFar = new Label(stepsGrp, SWT.LEFT);
 		soFar.setText("Steps so far:");
@@ -452,7 +473,7 @@ protected abstract void selectedVariablesCombo();
 			public void widgetDefaultSelected(SelectionEvent e) {
 				validate();
 			}
-			
+
 			private void validate() {
 				String[] selection = possibleStepsSWT.getSelection();
 
@@ -483,8 +504,6 @@ protected abstract void selectedVariablesCombo();
 			}
 		});
 
- 
-
 //		variablesData = getVariablesAndValues(possibleStepsList);
 //		variables.removeAll();
 //		for (String item : variablesData.keySet())
@@ -507,29 +526,75 @@ protected abstract void selectedVariablesCombo();
 		possibleStepsList = possibleSteps;
 	}
 
-	
+	private void createRightPanel(SashForm sashForm) {
+		Composite rightSide = new Composite(sashForm, SWT.NONE);
+		sashForm.setWeights(new int[] { 1250, 575 });
+		rightSide.setLayout(new GridLayout(1, false));
 
-	
-	// Breakpoints component
-	
-	private void createBreakpointComponent(SashForm sashForm) {
-		// create table
-		TableLayout breakpointTableLayout = new TableLayout();
-		breakpointTableLayout.addColumnData(new ColumnWeightData(6));
-		breakpointTableLayout.addColumnData(new ColumnWeightData(1));
-
-		Composite breakComp = new Composite(sashForm, SWT.NONE);
-		sashForm.setWeights(new int[] { 1250, 549 });
-		breakComp.setLayout(new FillLayout(SWT.VERTICAL));
-
-		Group bpGroup = new Group(breakComp, SWT.CENTER);
-		bpGroup.setText("Breakpoints");
-		bpGroup.setLayout(new GridLayout());
-		createBreakpointTable(bpGroup, breakpointTableLayout);
-		createBreakpointButtons(bpGroup);
+		createVariablesComponent(rightSide);
+		createBreakpointComponent(rightSide);
 	}
 
-	private void createBreakpointTable(Group bpGroup, TableLayout breakpointTableLayout) {		
+	/**
+	 * Create a listener for when a variable in the variables table gets checked.
+	 */
+	protected abstract IVarStateChangedListener getVarStateChangedListener();
+
+	private void createVariablesComponent(Composite rightSide) {
+		Group topRightGroup = new Group(rightSide, SWT.NONE);
+		topRightGroup.setLayout(new GridLayout());
+		GridData gd_group1 = new GridData(SWT.FILL, SWT.FILL, false, false, 1, 1);
+		gd_group1.heightHint = 400;
+		topRightGroup.setLayoutData(gd_group1);
+		topRightGroup.setText("Variables");
+
+		SashForm sashForm = createSashForm(topRightGroup);
+
+		this.varsTable = new VarsTable(sashForm, null, getVarStateChangedListener());
+
+		createVariablesButtons(topRightGroup);
+	}
+
+	private void createVariablesButtons(Composite parent) {
+		Composite btnComp = new Composite(parent, SWT.NONE);
+		RowLayout layout = new RowLayout(SWT.HORIZONTAL);
+		layout.center = true;
+		layout.justify = true;
+		btnComp.setLayout(layout);
+
+		varsBtn = new Button(btnComp, SWT.NONE);
+		varsBtn.setText("Variables...");
+
+		hideFixedVariablesBtn = new Button(btnComp, SWT.CHECK | SWT.CENTER);
+		hideFixedVariablesBtn.setSelection(false);
+		hideFixedVariablesBtn.setText("Hide Fixed");
+
+		hideDontCareVariablesBtn = new Button(btnComp, SWT.CHECK | SWT.CENTER);
+		hideDontCareVariablesBtn.setSelection(false);
+		hideDontCareVariablesBtn.setText("Hide Don't Cares");
+	}
+
+	// Breakpoints component
+
+	private void createBreakpointComponent(Composite rightSide) {
+		// create table
+		TableLayout breakpointTableLayout = new TableLayout();
+		breakpointTableLayout.addColumnData(new ColumnWeightData(4));
+		breakpointTableLayout.addColumnData(new ColumnWeightData(1));
+
+		Group breakGrp = new Group(rightSide, SWT.CENTER);
+		breakGrp.setText("Breakpoints");
+		breakGrp.setLayout(new GridLayout());
+
+		GridData breakGrp_GD = new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1);
+		breakGrp_GD.heightHint = 400;
+		breakGrp.setLayoutData(breakGrp_GD);
+		breakGrp.setText("Breakpoints");
+		createBreakpointTable(breakGrp, breakpointTableLayout);
+		createBreakpointButtons(breakGrp);
+	}
+
+	private void createBreakpointTable(Group bpGroup, TableLayout breakpointTableLayout) {
 		bpTableViewer = new TableViewer(bpGroup, SWT.BORDER | SWT.FULL_SELECTION);
 		bpTableViewer.getTable().setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
 		bpTableViewer.getTable().setLinesVisible(true);
@@ -663,11 +728,11 @@ protected abstract void selectedVariablesCombo();
 		protected void setValue(Object element, Object value) {
 			IBreakpoint bp = ((IBreakpoint) element);
 			replaceBreakpoint(bp.getId(), value.toString());
-		}	
+		}
 	}
-	
+
 	protected abstract void replaceBreakpoint(int id, String string);
-	
+
 	private class BpValProvider extends ColumnLabelProvider {
 		@Override
 		public String getText(Object element) {

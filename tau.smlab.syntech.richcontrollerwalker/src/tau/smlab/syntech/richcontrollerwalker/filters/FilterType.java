@@ -29,5 +29,5 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package tau.smlab.syntech.richcontrollerwalker.filters;
 
 public enum FilterType {
-	DROPDOWN, TEXT;
+	DROPDOWN, TEXT, SMART;
 }
