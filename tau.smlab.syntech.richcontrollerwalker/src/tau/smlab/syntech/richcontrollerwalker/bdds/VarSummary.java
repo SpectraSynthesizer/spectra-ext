@@ -29,13 +29,13 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package tau.smlab.syntech.richcontrollerwalker.bdds;
 
 import java.util.Arrays;
-import java.util.Collection;
+import java.util.List;
 
 import tau.smlab.syntech.richcontrollerwalker.util.Mod;
 
 public class VarSummary implements IVar {
 	private final String name;
-	private final Collection<String> domain;
+	private final List<String> domain;
 	private final Mod module;
 	
 	
@@ -52,7 +52,7 @@ public class VarSummary implements IVar {
 	}
 
 	@Override
-	public Collection<String> domain() {
+	public List<String> domain() {
 		return domain;
 	}
 

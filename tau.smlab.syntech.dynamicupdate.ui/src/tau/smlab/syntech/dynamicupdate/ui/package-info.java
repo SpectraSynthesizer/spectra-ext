@@ -27,11 +27,10 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 /**
- * This package contains the vacuity ui
- */
-/**
- * @author Rafi Shalom
- * @author Ariel Gorenstein
  *
  */
-package tau.smlab.syntech.vacuity.ui;
+/**
+ * @author Matan Yossef
+ *
+ */
+package tau.smlab.syntech.dynamicupdate.ui;

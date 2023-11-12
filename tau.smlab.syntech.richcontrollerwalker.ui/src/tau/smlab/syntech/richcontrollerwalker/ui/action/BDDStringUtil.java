@@ -26,16 +26,36 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 */
 
-package tau.smlab.syntech.vacuity.ui.preferences;
+package tau.smlab.syntech.richcontrollerwalker.ui.action;
 
-/**
- * @author shalom 
- */
+import java.util.Comparator;
+import java.util.List;
 
-public class PreferenceConstants {
+import net.sf.javabdd.BDD;
+import tau.smlab.syntech.richcontrollerwalker.bdds.BddUtil;
+import tau.smlab.syntech.richcontrollerwalker.ui.action.IDisplayExpHelper.IPair;
 
-	public static final String COMPUTE_VACUITY_CORES = "ComputeCores";
-	
-	public static final String USE_C_REALIZABILITY_REDUCTION = "UseC";
-	
+public class BDDStringUtil {
+	/**
+	 * Convert the given BDD to a string, whose variables are ordered according to
+	 * the given variable order.
+	 */
+	public static String orderedBddToStr(BDD bdd, List<String> orderedVars) {
+		String result = BddUtil.bddToStr(bdd);
+		if (result == "T" || result == "F") {
+			return result;
+		}
+
+		// Split to pairs
+		OptionExpHelper helper = new OptionExpHelper();
+		List<IPair> res = helper.getPairs(result);
+
+		res.sort(new Comparator<IPair>() {
+			public int compare(IPair o1, IPair o2) {
+				return orderedVars.indexOf(o1.var()) - orderedVars.indexOf(o2.var());
+			};
+		});
+
+		return helper.expFromPairs(res);
+	}
 }

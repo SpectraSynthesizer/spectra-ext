@@ -26,24 +26,19 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 */
 
-package tau.smlab.syntech.vacuity.ui.preferences;
+package tau.smlab.syntech.richcontrollerwalker.bdds;
 
-import org.eclipse.core.runtime.preferences.AbstractPreferenceInitializer;
-import org.eclipse.jface.preference.IPreferenceStore;
+public class ValueSummary implements IValue {
 
-import tau.smlab.syntech.vacuity.ui.Activator;
-
-/**
- * @author shalom 
- * 
- * Class used to initialize default preference values.
- */
-public class PreferenceInitializer extends AbstractPreferenceInitializer {
-
-	public void initializeDefaultPreferences() {
-		IPreferenceStore store = Activator.getDefault().getPreferenceStore();
-		store.setDefault(PreferenceConstants.COMPUTE_VACUITY_CORES, true);
-		store.setDefault(PreferenceConstants.USE_C_REALIZABILITY_REDUCTION, true);
+	private String val;
+	
+	public ValueSummary(String s) {
+		this.val = s;
+	}
+	
+	@Override
+	public String name() {
+		return val;
 	}
 
 }

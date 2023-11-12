@@ -33,28 +33,31 @@ import tau.smlab.syntech.richcontrollerwalker.bdds.BddUtil;
 
 class Step extends AbstractOption implements IStep {
 	private final BDD bdd;
+	private final int satCount;
 
-	
-	public Step(int id, BDD bdd) {
+	public Step(int id, BDD bdd, int satCount) {
 		super(id);
 		this.bdd = bdd;
+		this.satCount = satCount;
 	}
 
 	@Override
 	public BDD getBdd() {
 		return bdd;
 	}
-	
+
 	@Override
 	public String getExpression() {
-		return BddUtil.bddToStr(bdd);
+		String result = BddUtil.bddToStr(bdd);
+		if (satCount != -1) {
+			result += " [" + satCount + "]";
+		}
+		return result;
 	}
 
-	
 	@Override
 	public String toString() {
 		return getExpression();
 	}
-	
-	
+
 }

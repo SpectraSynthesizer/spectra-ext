@@ -26,33 +26,11 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 */
 
-package tau.smlab.syntech.vacuity.ui;
-
-import tau.smlab.syntech.ui.extension.ActionID;
-
 /**
- * 
- * @author shalom
  *
  */
-
-public enum VacuityActionID implements ActionID {
-	CHECK_SINGLE_ITEM("Check Selected Item for Vacuity"),
-	CHECK_SATISFIABILITY("Check Satsifiability"),
-	ENV_REDUNDANT_VALS("Find Environment Redundant Values"),
-	SYS_REDUNDANT_VALS("Find System Redundant Values"),
-	ENV_BEHAVIORS("Find Environment Module Vacuities"),
-	SYS_BEHAVIORS("Find System Module Vacuities");
-
-	private String text;
-
-	private VacuityActionID(String text) {
-		this.text = text;
-	}
-
-	@Override
-	public String getMenuText() {
-		return text;
-	}
-
-}
+/**
+ * @author Matan Yossef
+ *
+ */
+package tau.smlab.syntech.dynamicupdate;

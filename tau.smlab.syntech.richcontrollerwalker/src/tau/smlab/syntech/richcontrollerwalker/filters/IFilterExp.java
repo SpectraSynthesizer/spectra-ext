@@ -34,9 +34,18 @@ public interface IFilterExp extends IPersistent {
 	String PREFIX = "FILTER";
 	int DROPDOWN_ID = 0;
 	int TEXT_ID = 1;
+	int SMART_ID = 2;
 
 	static int getTypeId(FilterType type) {
-		return type.equals(FilterType.TEXT) ? TEXT_ID : DROPDOWN_ID;
+		switch (type) {
+		case DROPDOWN:
+			return DROPDOWN_ID;
+		case TEXT:
+			return TEXT_ID;
+		case SMART:
+			return SMART_ID;
+		}
+		throw new IllegalArgumentException();
 	}
 	
 	@Override

@@ -31,6 +31,9 @@ package tau.smlab.syntech.richcontrollerwalker;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
@@ -38,6 +41,7 @@ import java.util.Objects;
 import org.eclipse.core.resources.IFile;
 
 import net.sf.javabdd.BDD;
+import net.sf.javabdd.BDDVarSet;
 import tau.smlab.syntech.jtlv.Env;
 import tau.smlab.syntech.richcontrollerwalker.Breakpoints.Breakpoint;
 import tau.smlab.syntech.richcontrollerwalker.Engine.FullState;
@@ -47,6 +51,7 @@ import tau.smlab.syntech.richcontrollerwalker.filters.FilterType;
 import tau.smlab.syntech.richcontrollerwalker.options.DisplayedOptions;
 import tau.smlab.syntech.richcontrollerwalker.options.IOptionsReply;
 import tau.smlab.syntech.richcontrollerwalker.options.OptionsManager;
+import tau.smlab.syntech.richcontrollerwalker.options.PartialAssignment;
 import tau.smlab.syntech.richcontrollerwalker.util.Eval;
 import tau.smlab.syntech.richcontrollerwalker.util.IBreakpoint;
 import tau.smlab.syntech.richcontrollerwalker.util.Mode;
@@ -66,8 +71,7 @@ abstract class AbstractWalker {
 	private final History history;
 	private final OptionsManager options;
 	private Mode mode;
-	
-	
+
 	AbstractWalker(final PrintStream out, final IFile specFile, final Modules chosenUser, final Preferences preferences)
 			throws IOException {
 		Objects.requireNonNull(preferences).setCurrentBDDPackage();
@@ -82,7 +86,7 @@ abstract class AbstractWalker {
 		logger = new Logger(preferences.isLogActive(), spec.getFilePath(), spec.getModelName());
 		breakpoints = new Breakpoints();
 		options = new OptionsManager(preferences.getMaxNumDisplayedSteps());
-		
+
 	}
 
 	protected void resetFullState() {
@@ -181,7 +185,7 @@ abstract class AbstractWalker {
 	protected List<BDD> computeReachRoute(final int bpId) {
 		return engine.computeReachRoute(getBreakpointBdd(bpId));
 	}
-	
+
 	protected BDD getRandomMove() {
 		return engine.getRandomMove();
 	}
@@ -367,7 +371,7 @@ abstract class AbstractWalker {
 	protected void printDeadlock() {
 		printing.printDeadLock();
 	}
-	
+
 	protected void printFreeStep(BDD step) {
 		printing.printFreeStep(getTurn(), step);
 	}
@@ -479,6 +483,16 @@ abstract class AbstractWalker {
 		return options.getFilterSummary(type);
 	}
 
+	public IOptionsReply updateHiddenVariables(Collection<String> hidden, boolean hideFixed, boolean hideDontCares) {
+		options.updateHiddenVariables(hidden, hideFixed, hideDontCares, getMode().isFree());
+		return getMode().isFree() ? getDisplayOptions() : IOptionsReply.emptyOptions();
+	}
+
+	public IOptionsReply setShowStepSatCount(boolean showSatCount) {
+		options.setShowStepSatCount(showSatCount, getMode().isFree());
+		return getMode().isFree() ? getDisplayOptions() : IOptionsReply.emptyOptions();
+	}
+
 	public IOptionsReply setFilterActivity(FilterType filterType, boolean isActive) {
 		options.setFilterActivity(filterType, isActive, getMode().isFree());
 		return getMode().isFree() ? getDisplayOptions() : IOptionsReply.emptyOptions();
@@ -503,10 +517,28 @@ abstract class AbstractWalker {
 		options.freeFilters();
 	}
 
+	public OptionsManager getOptionsManager() {
+		return this.options;
+	}
+
+	public BigInteger getTotalOptionCount() {
+		return options.getTotalCount();
+	}
+
+	public BigInteger getFilteredOptionCount() {
+		return options.getFilteredCount();
+	}
+
 	/**
 	 * Returns path to working directory
 	 */
 	public String getWorkingDir() {
 		return workingDir;
+	}
+	
+	public ArrayList<PartialAssignment> getPartialAssignments(List<String> varOrder, int depth) {
+		BDD successors = options.getFilteredSuccessors();
+		BDDVarSet usedVars = options.getUsedVarSet();
+		return PartialAssignment.getSmallestPartialAssignments(usedVars, varOrder, successors, depth);
 	}
 }

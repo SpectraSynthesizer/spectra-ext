@@ -32,6 +32,7 @@ import java.util.Collection;
 import java.util.List;
 
 import net.sf.javabdd.BDD;
+import net.sf.javabdd.BDDVarSet;
 import tau.smlab.syntech.richcontrollerwalker.bdds.IBdd;
 
 public interface IAllSteps extends IOptions, IBdd, Iterable<IStep> {
@@ -47,7 +48,7 @@ public interface IAllSteps extends IOptions, IBdd, Iterable<IStep> {
 
 	IStep getStep(int stepId);
 
-	void setNew(BDD successors, BDD varsByTurn);
+	void setNew(BDD successors, BDDVarSet varsToShow, BDDVarSet turnVars, boolean includeSatCount);
 	
 	List<IStep> loadSteps();
 }

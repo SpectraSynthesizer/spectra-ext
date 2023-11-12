@@ -35,22 +35,28 @@ import java.util.List;
 
 import net.sf.javabdd.BDD;
 import net.sf.javabdd.BDD.BDDIterator;
+import net.sf.javabdd.BDDVarSet;
+import tau.smlab.syntech.jtlv.Env;
 
 public class AllSteps implements IAllSteps {
 	private BDD successors;
+	private BDDVarSet turnVars;
 	private final List<IStep> steps = new ArrayList<>();
 	private BDDIterator iterator;
 	private int maxOptionsToLoad;
+	private boolean includeSatCount = false;
 
 	public AllSteps(int maxOptionsToLoad) {
 		this.maxOptionsToLoad = maxOptionsToLoad;
 	}
-	
+
 	@Override
-	public void setNew(BDD successors, BDD varsByTurn) {
+	public void setNew(BDD successors, BDDVarSet varsToShow, BDDVarSet turnVars, boolean includeSatCount) {
 		clear();
 		this.successors = successors.id();
-		this.iterator = successors.iterator(varsByTurn.toVarSet());
+		this.iterator = successors.iterator(varsToShow);
+		this.turnVars = turnVars;
+		this.includeSatCount = includeSatCount;
 		steps.clear();
 	}
 
@@ -58,7 +64,6 @@ public class AllSteps implements IAllSteps {
 	public BDD getBdd() {
 		return successors;
 	}
-
 
 	@Override
 	public IStep getStep(int stepId) {
@@ -69,18 +74,27 @@ public class AllSteps implements IAllSteps {
 	public Collection<IStep> getCollection() {
 		return steps;
 	}
-	
+
 	public List<IStep> loadSteps() {
-		
+
 		int i = 0;
 		List<IStep> newSteps = new ArrayList<>();
 		while (iterator.hasNext() && i < maxOptionsToLoad) {
-			newSteps.add(new Step(steps.size() + newSteps.size(), iterator.next()));
+			BDD step = iterator.next();
+			int satCount = includeSatCount ? getSatCount(step) : -1;
+			newSteps.add(new Step(steps.size() + newSteps.size(), step, satCount));
 			i++;
 		}
 		steps.addAll(newSteps);
-		
+
 		return newSteps;
+	}
+
+	private int getSatCount(BDD step) {
+		BDD next = successors.and(step);
+		int count = (int) Env.getSatCount(next, turnVars);
+		next.free();
+		return count;
 	}
 
 	@Override
