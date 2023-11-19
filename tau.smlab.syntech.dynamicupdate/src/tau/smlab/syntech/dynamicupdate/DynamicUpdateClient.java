@@ -54,7 +54,7 @@ import tau.smlab.syntech.games.util.SaveLoadWithDomains;
 import tau.smlab.syntech.jtlv.Env;
 import tau.smlab.syntech.jtlv.ModuleVariableException;
 import tau.smlab.syntech.jtlv.env.module.ModuleBDDField;
-import tau.smlab.syntech.ui.console.ConsolePrinter;
+import tau.smlab.syntech.ui.extension.console.ConsolePrinter;
 
 public class DynamicUpdateClient {
 

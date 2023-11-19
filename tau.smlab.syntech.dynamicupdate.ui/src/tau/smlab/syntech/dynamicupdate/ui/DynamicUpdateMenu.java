@@ -128,7 +128,7 @@ public class DynamicUpdateMenu extends SyntechAction<DynamicUpdateActionID> {
 	 * If the page is unsaved, ask user if he wants to save it first
 	 * @return false if the user has chosen to abort
 	 */
-	private boolean savePage() {
+	protected boolean savePage() {
 		IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
 
 		// check if file is saved
