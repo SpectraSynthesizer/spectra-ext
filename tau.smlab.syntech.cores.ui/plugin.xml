@@ -26,6 +26,9 @@
             name="Cores">
       </page>
    </extension>
+   	<extension point="org.eclipse.core.runtime.preferences">
+   		<initializer class="tau.smlab.syntech.cores.ui.preferences.PreferenceInitializer" />
+	</extension>
 
 </plugin>
 

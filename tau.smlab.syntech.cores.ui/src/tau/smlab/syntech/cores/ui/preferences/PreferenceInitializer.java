@@ -47,6 +47,7 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
 	public void initializeDefaultPreferences() {
 		IPreferenceStore store = Activator.getDefault().getPreferenceStore();
 		store.setDefault(PreferenceConstants.USE_QUICKCORE, true);
+		store.setDefault(PreferenceConstants.USE_QUICKCORE_HEURISTICS, true);
 		store.setDefault(PreferenceConstants.REALIZABILITY_CHECK, "GR(1)");
 	}
 

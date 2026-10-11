@@ -64,6 +64,17 @@ public class UnreachableValues extends Vacuity {
 	    long startTime = System.currentTimeMillis();
 	    BehaviorInfo aSafety = new BehaviorInfo(null, Env.TRUE(), null, null, null, 0, false); // use  a general safety for behavior extraction
 		List<BehaviorInfo> behaviors = sys ? getSysPremiseSet(aSafety) : getEnvPremiseSet(aSafety);
+
+//		The following is a patch for safeties of "alw" that are in the premise-set for domain values.
+//		These are all unprimed so they can imply domain values safties which are always stated unprimed.
+//		We detect primed safeties as ones that have an ini sharing their trace.
+//		This should work because "alw" statements that refer to the next state have no ini
+//		Also, safeties that come from patterns has an ini with the same trace but they are auxiliary.
+//		Thus: We look for sys/env ini traces, and unprime only premise-set behviors with those traces.
+		List<Integer> iniTraces = (sys? gm.getSysBehaviorInfo() : gm.getEnvBehaviorInfo()).stream().filter(item -> item.isInitial()).map(item -> item.traceId).toList();
+		behaviors.stream().filter(item -> iniTraces.contains(item.traceId)). // Only safeties that come from alw with no next (they have an ini with the same trace)
+			forEach(behave-> behave.safety = Env.unprime(behave.safety)); // unprime
+		
 		BDDBuilder.setBehaviors(behaviors);
 		outerloop:
 		for (ModuleBDDField f : fields) {

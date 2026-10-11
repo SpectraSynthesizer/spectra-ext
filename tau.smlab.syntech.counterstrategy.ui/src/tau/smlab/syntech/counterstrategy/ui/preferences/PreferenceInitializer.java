@@ -26,25 +26,30 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 */
 
-package tau.smlab.syntech.counterstrategy.repair.ui;
+package tau.smlab.syntech.counterstrategy.ui.preferences;
 
-import tau.smlab.syntech.ui.extension.ActionID;
+import org.eclipse.core.runtime.preferences.AbstractPreferenceInitializer;
+import org.eclipse.jface.preference.IPreferenceStore;
 
-public enum JVTSBasedRepairActionID implements ActionID {
-	FULL_APPLICATION("Apply all JVTS"),
-	ALUR_REPAIR("GR(1) Refinement"),
-	ULTIMATE_FIXER("GLASS"),
-	BFS_REPAIR("JVTS-Repair");
-	
-	private String text;
+import tau.smlab.syntech.counterstrategy.ui.Activator;
 
-	private JVTSBasedRepairActionID(String text) {
-		this.text = text;
-	}
 
-	@Override
-	public String getMenuText() {
-		return text;
+/**
+ * Class used to initialize default preference values.
+ */
+public class PreferenceInitializer extends AbstractPreferenceInitializer {
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.eclipse.core.runtime.preferences.AbstractPreferenceInitializer#
+	 * initializeDefaultPreferences()
+	 */
+	public void initializeDefaultPreferences() {
+		IPreferenceStore store = Activator.getDefault().getPreferenceStore();
+		store.setDefault(PreferenceConstants.MERGE_ATTRACTORS, true);
+		store.setDefault(PreferenceConstants.HIDE_AUXILIARY_VARIABLES, false);
+		store.setDefault(PreferenceConstants.CONCRETIZATION_DEPTH, 3);
 	}
 
 }

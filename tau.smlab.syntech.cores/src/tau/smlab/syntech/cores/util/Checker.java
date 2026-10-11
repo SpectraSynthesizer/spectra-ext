@@ -192,45 +192,84 @@ public abstract class Checker<T> {
 	}
 
 	/**
-	 * find in lists and if not found apply check and count
+	 * Check if the given part satisfies the check condition.
 	 * 
-	 * @param part
-	 * @return
+	 * @param part The part to check
+	 * @param checkCache Whether to check if the part is already cached before performing a check
+	 * @param storeInCache Whether to store the results in the cache
+	 * 
 	 */
-	public boolean wrappedCheck(List<T> part) {
+	public boolean wrappedCheck(List<T> part, boolean checkCache, boolean storeInCache) {
+		
+		// Don't sort in-place, so that original ordering will be kept if needed
+		List<T> sortedPart = new ArrayList<T>(part);
 		
 		checks++;
 
 		// sort part before it is compared (to other sorted lists), or registered
-		mem.arrange(part);
+		mem.arrange(sortedPart);
 		
-		if (mem.lookupPos(part)) {
-			return true;
-		}
+		if (checkCache) {
+			if (mem.lookupPos(sortedPart)) {
+				return true;
+			}
 
-		if (mem.lookupNeg(part)) {
-			return false;
+			if (mem.lookupNeg(sortedPart)) {
+				return false;
+			}
 		}
 		
 		actualChecks++;
 		boolean isPos = check(part);
-		register(isPos, part); 
+		if (storeInCache) {			
+			registerSorted(isPos, sortedPart); 
+		}
 		return isPos;
 	}
 	
-	public void register(boolean isPos, List<T> toRegister) {
+	/**
+	 * Check if the given part satisfies the check condition.
+	 * Uses an internal cache to make computation faster.
+	 */
+	public final boolean wrappedCheck(List<T> part) {
+		return wrappedCheck(part, true, true);
+	}
+	
+	/**
+	 * Register an already sorted list in the matching cache.
+	 */
+	private void registerSorted(boolean isPos, List<T> toRegister) {
 		if (isPos) {
 			mem.registerPos(toRegister);
 		} else {
 			mem.registerNeg(toRegister);
 		}
 	}
+	
+	/**
+	 * Register a list into the matching cache.
+	 */
+	public void register(boolean isPos, List<T> toRegister) {
+		List<T> sorted = new ArrayList<T>(toRegister);
+		mem.arrange(sorted);
+		registerSorted(isPos, sorted);
+	}
 
-	  /**
-	   * check if part satisfies criterion, e.g., unsatisfiabiliy when looking for unsat cores
-	   * 
-	   * @param part
-	   * @return true if part satisfies criterion
-	   */
-	abstract protected boolean check(List<T> part);
+	/**
+	 * Get the smallest positive result in the cache.
+	 */
+	public List<T> getSmallestPos() {
+		if (mem.pos.isEmpty()) {
+			return null;
+		}
+		return mem.pos.first();
+	}
+
+	/**
+	 * check if part satisfies criterion, e.g., unsatisfiabiliy when looking for unsat cores
+	 * 
+	 * @param part
+	 * @return true if part satisfies criterion
+	 */
+	abstract protected boolean check(List<T> part);	
 }

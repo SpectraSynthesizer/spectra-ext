@@ -31,6 +31,10 @@ package tau.smlab.syntech.cores.ui.preferences;
 import org.eclipse.jface.preference.BooleanFieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
 import org.eclipse.jface.preference.RadioGroupFieldEditor;
+import org.eclipse.jface.util.PropertyChangeEvent;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 
@@ -61,20 +65,69 @@ public class PreferencePage extends FieldEditorPreferencePage implements
    */
 
 	private BooleanFieldEditor useQC;
+	private BooleanFieldEditor useQCHeuristics;
+	private Button useQCHeuristicsInnerButton; // The inner checkbox button of useQCHeuristics
 	private RadioGroupFieldEditor game;
 
 	public void createFieldEditors() {
 		useQC = new BooleanFieldEditor(PreferenceConstants.USE_QUICKCORE,
 				"Use QuickCore for unrealizable core and related computations", getFieldEditorParent());
+		
+		useQCHeuristics = new BooleanFieldEditor(PreferenceConstants.USE_QUICKCORE_HEURISTICS, 
+				"Use additional performance heuristics for QuickCore", getFieldEditorParent()) {
+			
+			// Make the second checkbox indented
+			@Override
+			protected void doFillIntoGrid(Composite parent, int numColumns) {
+				super.doFillIntoGrid(parent, numColumns);
+				
+				useQCHeuristicsInnerButton = getChangeControl(parent);
+				Object layoutData = useQCHeuristicsInnerButton.getLayoutData();
+				if (layoutData instanceof GridData) {
+					((GridData) layoutData).horizontalIndent = 16;
+				}
+			}
+		};
 	  
 		game = new RadioGroupFieldEditor(PreferenceConstants.REALIZABILITY_CHECK, "Algorithm to use for realizability checking in core computations", 1,
 					new String[][] { { "GR(1)", "GR1" }, { "Rabin", "RABIN" }},
 					getFieldEditorParent(), true);
 		
 		addField(useQC);
-		addField(game);
+		addField(useQCHeuristics);
+		addField(game);		
 	}
-
+	
+	@Override
+	public void propertyChange(PropertyChangeEvent event) {
+		super.propertyChange(event);
+		
+		// Set the heuristics checkbox to be enabled/disabled according to the QC checkbox
+		if (event.getSource() == useQC) {
+			boolean qcUsed = (Boolean)event.getNewValue();
+			useQCHeuristics.setEnabled(qcUsed, getFieldEditorParent());
+			
+			// Also uncheck the heuristics checkbox when QC is disabled
+			if (useQCHeuristicsInnerButton != null && !useQCHeuristicsInnerButton.isDisposed()) {
+				useQCHeuristicsInnerButton.setSelection(qcUsed && getPreferenceStore().getBoolean(PreferenceConstants.USE_QUICKCORE_HEURISTICS));
+			}
+		}
+	}
+	
+	@Override
+	protected void initialize() {
+		super.initialize();
+		
+		// Set the heuristics checkbox to be enabled/disabled according to the QC checkbox
+		boolean qcUsed = getPreferenceStore().getBoolean(PreferenceConstants.USE_QUICKCORE);
+		useQCHeuristics.setEnabled(qcUsed, getFieldEditorParent());
+		
+		// Uncheck the heuristics checkbox when QC is disabled
+		if (useQCHeuristicsInnerButton != null && !useQCHeuristicsInnerButton.isDisposed()) {
+			useQCHeuristicsInnerButton.setSelection(qcUsed && useQCHeuristics.getBooleanValue());
+		}
+	}
+	
   /*
    * (non-Javadoc)
    * 
@@ -85,6 +138,10 @@ public class PreferencePage extends FieldEditorPreferencePage implements
 
 	public static boolean getUseQuickCore() {
 		return Activator.getDefault().getPreferenceStore().getBoolean(PreferenceConstants.USE_QUICKCORE);
+	}
+	
+	public static boolean getUseQuickCoreHeuristics() {
+		return Activator.getDefault().getPreferenceStore().getBoolean(PreferenceConstants.USE_QUICKCORE_HEURISTICS);
 	}
 	
 	public static boolean useGR1Realizability() {

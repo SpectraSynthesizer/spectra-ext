@@ -38,5 +38,6 @@ package tau.smlab.syntech.cores.domainagnostic;
 public enum MinimizerType {
 	DDMIN,
 	LINEARMIN,
-	QUICKXPLAIN;
+	QUICKXPLAIN,
+	CDD;
 }

@@ -32,5 +32,7 @@ public class PreferenceConstants {
 
 	public static final String USE_QUICKCORE = "QuickCore";
 	
+	public static final String USE_QUICKCORE_HEURISTICS = "QuickCoreHeuristics";
+	
 	public static final String REALIZABILITY_CHECK = "Check";
 }

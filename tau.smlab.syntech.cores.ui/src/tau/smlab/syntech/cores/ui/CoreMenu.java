@@ -67,10 +67,13 @@ import tau.smlab.syntech.cores.AllCoresPunchAlgorithm;
 import tau.smlab.syntech.cores.AllUnrealizebleCores;
 import tau.smlab.syntech.cores.DdminUnrealizableVarsCore;
 import tau.smlab.syntech.cores.QuickCore;
+import tau.smlab.syntech.cores.domainagnostic.MinimizerType;
 import tau.smlab.syntech.cores.util.Checker;
 import tau.smlab.syntech.cores.util.CoreOutput;
 import tau.smlab.syntech.cores.util.RealizabilityCheck;
 import tau.smlab.syntech.cores.util.RealizabilityCheck.GameType;
+import tau.smlab.syntech.cores.util.RealizabilityCheckResult;
+import tau.smlab.syntech.cores.util.RealizabilityChecker;
 
 import org.eclipse.xtext.nodemodel.INode;
 import org.eclipse.xtext.nodemodel.util.NodeModelUtils;
@@ -123,7 +126,7 @@ public class CoreMenu extends SyntechAction<CoresActionID> {
 		}
 
 		GameModel gm = BDDGenerator.generateGameModel(gi, TraceInfo.ALL, false,
-				PreferencePage.getTransFuncSelection(true));
+				PreferencePage.getTransFuncSelection(false));
 		ti = new TraceIdentifier(gm);
 
 		boolean prevUseMemory = GR1GameExperiments.WITH_MEMORY;
@@ -136,12 +139,23 @@ public class CoreMenu extends SyntechAction<CoresActionID> {
 		PreferencePage.setOptSelection();
 
 		boolean quickCore = tau.smlab.syntech.cores.ui.preferences.PreferencePage.getUseQuickCore();
+		boolean quickCoreHeuristics = tau.smlab.syntech.cores.ui.preferences.PreferencePage.getUseQuickCoreHeuristics();
+		
+		boolean prevQCEarlyJusticeDetection = QuickCore.EARLY_JUTSICE_DETECTION;
+		boolean prevQCIncrementalUnrealResults = QuickCore.INCREMENTAL_UNREAL_RESULTS;
+		MinimizerType prevQCMinimizerType = QuickCore.DEFAULT_MINIMIZER_TYPE;
+		
+		QuickCore.EARLY_JUTSICE_DETECTION = quickCoreHeuristics;
+		QuickCore.INCREMENTAL_UNREAL_RESULTS = quickCoreHeuristics;
+		QuickCore.DEFAULT_MINIMIZER_TYPE = quickCoreHeuristics ? MinimizerType.CDD : MinimizerType.DDMIN;
+				
 		RealizabilityCheck.checkType = (tau.smlab.syntech.cores.ui.preferences.PreferencePage.useGR1Realizability())
 				? GameType.GR1_GAME
 				: GameType.RABIN_GAME;
 		RealizabilityCheck.useCUDD = PreferencePage.getBDDPackageSelection().equals(BDDPackage.CUDD);
 
-		boolean realizable = RealizabilityCheck.isRealizable(gm);
+		RealizabilityCheckResult checkResult = RealizabilityCheck.checkRealizability(gm, true);
+		boolean realizable = checkResult.sysWins;
 
 		final SysTraceInfoBuilder builder = new SysTraceInfoBuilder(gm);
 
@@ -181,7 +195,7 @@ public class CoreMenu extends SyntechAction<CoresActionID> {
 				consolePrinter.printlnAndLog(specFile, actionID.toString(),
 						"Specification is realizable. Cannot compute system variables core.");
 			} else {
-				List<Integer> coreGars = computeGarCore(gm, builder, quickCore);
+				List<Integer> coreGars = computeGarCore(gm, builder, quickCore, checkResult);
 				consolePrinter.printlnAndLog(specFile, actionID.toString(),
 						"Found guarantees unrealizable core with " + coreGars.size() + " guarantees, at lines "
 								+ TraceIdentifier.formatLines(coreGars) + ". See markers in specification file.");
@@ -269,7 +283,7 @@ public class CoreMenu extends SyntechAction<CoresActionID> {
 				consolePrinter.printlnAndLog(specFile, actionID.toString(),
 						"Specification is realizable. Cannot compute guarantees core.");
 			} else {
-				AllUnrealizebleCores glb = new AllUnrealizebleCores(gm, quickCore);
+				AllUnrealizebleCores glb = new AllUnrealizebleCores(gm, quickCore, checkResult);
 
 				glb.computeAllCores(builder.getTraceList());
 				List<Integer> globalCore = glb.getCoreData().getGlobalCore();
@@ -286,7 +300,7 @@ public class CoreMenu extends SyntechAction<CoresActionID> {
 				consolePrinter.printlnAndLog(specFile, actionID.toString(),
 						"Specification is realizable. Cannot compute guarantees core.");
 			} else {
-				List<Integer> result = computeGarCore(gm, builder, quickCore);
+				List<Integer> result = computeGarCore(gm, builder, quickCore, checkResult);
 				consolePrinter.printlnAndLog(specFile, actionID.toString(),
 						"Found unrealizable core with " + result.size() + " elements, at lines "
 								+ TraceIdentifier.formatLines(result) + ". See markers in specification file.");
@@ -336,7 +350,7 @@ public class CoreMenu extends SyntechAction<CoresActionID> {
 				consolePrinter.printlnAndLog(specFile, actionID.toString(),
 						"Specification is realizable. Cannot compute guarantees core.");
 			} else {
-				AllUnrealizebleCores all = new AllUnrealizebleCores(gm, quickCore);
+				AllUnrealizebleCores all = new AllUnrealizebleCores(gm, quickCore, checkResult);
 				all.setCoreOutput(allCoresOutputLog);
 
 				all.computeAllCores(builder.getTraceList());
@@ -368,6 +382,12 @@ public class CoreMenu extends SyntechAction<CoresActionID> {
 		default:
 			break;
 		}
+		
+		QuickCore.EARLY_JUTSICE_DETECTION = prevQCEarlyJusticeDetection;
+		QuickCore.INCREMENTAL_UNREAL_RESULTS = prevQCIncrementalUnrealResults;
+		QuickCore.DEFAULT_MINIMIZER_TYPE = prevQCMinimizerType;
+		
+		checkResult.free();
 		gm.free();
 		GR1GameExperiments.WITH_MEMORY = prevUseMemory; // restore previous choice
 	}
@@ -381,15 +401,11 @@ public class CoreMenu extends SyntechAction<CoresActionID> {
 	 * @param quickCore
 	 * @return
 	 */
-	private List<Integer> computeGarCore(GameModel gm, SysTraceInfoBuilder builder, boolean quickCore) {
-		Checker<Integer> check = new Checker<Integer>() {
-			protected boolean check(List<Integer> sys) {
-				return !RealizabilityCheck.isRealizable(builder.build(sys));
-			}
-		};
+	private List<Integer> computeGarCore(GameModel gm, SysTraceInfoBuilder builder, boolean quickCore, RealizabilityCheckResult initialCheckResult) {
+		RealizabilityChecker check = new RealizabilityChecker(builder);
 		List<Integer> coreGars = new ArrayList<Integer>();
 		if (quickCore) {
-			QuickCore qc = new QuickCore(gm, check);
+			QuickCore qc = new QuickCore(gm, initialCheckResult, check);
 			coreGars.addAll(qc.minimize(ti.getSysTraces()));
 		} else {
 			AbstractDdmin<Integer> ucmin = new AbstractDdmin<Integer>() {

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+ <extension
+         point="org.eclipse.ui.views">
+      <category
+            name="Counter Strategy Category"
+            id="tau.smlab.syntech.counterstrategy.ui.views.Category">
+      </category>
+      <view
+            category="tau.smlab.syntech.counterstrategy.ui.views.Category"
+            class="tau.smlab.syntech.counterstrategy.ui.views.SymbolicGraphView"
+            id="tau.smlab.syntech.counterstrategy.ui.views.SymbolicGraph"
+            name="Symbolic Graph View"
+            restorable="true">
+      </view>
+      <view
+            category="tau.smlab.syntech.counterstrategy.ui.views.Category"
+            class="tau.smlab.syntech.counterstrategy.ui.views.ConcreteGraphView"
+            id="tau.smlab.syntech.counterstrategy.ui.views.ConcreteGraph"
+            name="Concrete Graph View"
+            restorable="true">
+      </view>
+ </extension>
+ <extension
+         point="org.eclipse.help.contexts">
+      <contexts
+            file="contexts.xml">
+      </contexts>
+   </extension>
+
+ <extension
+         point="org.eclipse.ui.perspectiveExtensions">
+      <perspectiveExtension
+            targetID="tau.smlab.syntech.counterstrategy.ui.perspectives.CounterStrategyPerspective">
+         <view
+               id="tau.smlab.syntech.counterstrategy.ui.views.ConcreteGraph"
+               minimized="false"
+               relationship="stack"
+               relative="tau.smlab.syntech.counterstrategy.ui.views.SymbolicGraph">
+         </view> 
+      </perspectiveExtension>
+</extension>
+   
+<!-- Locate menu dynamically under syntech.ui : syntechaddonsmenu -->   
+ <extension point="org.eclipse.ui.menus">
+  <menuContribution locationURI="popup:tau.smlab.syntech.ui.syntechaddonsmenu">
+	<menu
+       label="GR(1) JVTS">
+    <dynamic 
+              class="tau.smlab.syntech.counterstrategy.ui.menu.ConcreteAction"
+              id="tau.smlab.syntech.counterstrategy.ui.menu.ConcreteAction">
+    </dynamic>       
+    <dynamic
+    	  class="tau.smlab.syntech.counterstrategy.ui.menu.SymbolicAction"
+          id="tau.smlab.syntech.counterstrategy.ui.menu.ConcreteAction">
+    </dynamic>
+	</menu>
+  </menuContribution>
+ </extension>
+
+<!-- Preferences page. Locate dynamically under syntech.ui : PreferencePage -->
+<extension
+     point="org.eclipse.ui.preferencePages">
+      <page
+      		category="tau.smlab.syntech.ui.preferences.PreferencePage"
+            class="tau.smlab.syntech.counterstrategy.ui.preferences.PreferencePage"
+            id="tau.smlab.syntech.counterstrategy.ui.preferences.PreferencePage"
+            name="Counter Strategy">
+      </page>
+</extension>
+<extension
+         point="org.eclipse.core.runtime.preferences">
+      <initializer
+            class="tau.smlab.syntech.counterstrategy.ui.preferences.PreferenceInitializer">
+      </initializer>
+</extension>
+
+</plugin>

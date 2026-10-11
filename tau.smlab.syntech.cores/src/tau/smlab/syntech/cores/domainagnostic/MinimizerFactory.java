@@ -31,6 +31,7 @@ package tau.smlab.syntech.cores.domainagnostic;
 import java.util.List;
 
 import tau.smlab.syntech.checks.ddmin.AbstractDdmin;
+import tau.smlab.syntech.checks.ddmin.AbstractCDD;
 import tau.smlab.syntech.checks.ddmin.Minimizer;
 import tau.smlab.syntech.cores.util.Checker;
 
@@ -72,6 +73,14 @@ public class MinimizerFactory<T> {
 					return c.wrappedCheck(part);
 				}
 				
+			};
+			
+		case CDD:
+			return new AbstractCDD<T>() {
+				@Override
+				protected boolean check(List<T> part) {
+					return c.wrappedCheck(part);
+				}
 			};
 			
 		default:
